@@ -4,18 +4,31 @@ layout (local_size_x = 16, local_size_y = 16) in;
 
 layout (rgba32f, binding = 0) writeonly uniform image2D destTex;
 
+layout (std430, binding = 1) buffer SVOData {
+    uint svo[]; // The actual SVO data
+};
+
+layout (std430, binding = 2) buffer IndirectionGrid {
+    uint grid[]; // Each element is an index into the SVOData buffer
+};
+
 uniform vec3 cameraPos;
 uniform vec3 cameraDir;
 uniform vec3 cameraUp;
 uniform vec3 cameraRight;
 uniform float cameraFov;
 
-// SVO data would also be passed in some form, either as a texture, SSBO, etc.
-
-float querySVO(vec3 position) {
-    // Query the SVO and return some value (e.g., density)
+uint querySVO(vec3 position, uint rootIndex) {
+    // Query the SVO starting at rootIndex and return some value
     // This is a placeholder; you'll need to implement this based on how your SVO data is stored
-    return 0.0;
+    return svo[rootIndex];
+}
+
+float calculateStepSize(vec3 rayPos, uint rootIndex) {
+    // Calculate the step size based on the current SVO or child SVO
+    // This is a placeholder; you'll need to implement this based on how your SVO data is stored
+    // For example, you might look up the size of the current node in the SVO and use that as the step size
+    return svo[rootIndex].size;
 }
 
 void main() {
@@ -35,14 +48,16 @@ void main() {
 
     // Perform ray marching
     for (int i = 0; i < 100; ++i) { // Limit the number of steps to avoid infinite loops
-        float density = querySVO(rayPos + rayDir * t);
+        uint rootIndex = grid[int(rayPos.x) + int(rayPos.y) * gridSize + int(rayPos.z) * gridSize * gridSize];
+        uint density = querySVO(rayPos + rayDir * t, rootIndex);
 
-        if (density > 0.5) {
+        if (density > 0) {
             // We hit something!
             pixel = vec4(1.0, 0.0, 0.0, 1.0); // Set to red for demonstration
             break;
         }
 
+        float stepSize = calculateStepSize(rayPos + rayDir * t, rootIndex);
         t += stepSize;
     }
 
