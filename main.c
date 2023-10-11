@@ -86,6 +86,12 @@ int main()
         return -1;
     }
 
+    float cameraPos[3] = { 0,0,0 };
+    float cameraDir[3] = { 0,0,0 };
+    float cameraUp[3] = { 0,0,0 };
+    float cameraRight[3] = { 0,0,0 };
+    float cameraFov = 75;
+
     char* vertexShaderSource = readFile("vertex_shader.glsl");
     char* fragmentShaderSource = readFile("fragment_shader.glsl");
     char* computeShaderSource = readFile("compute_shader.glsl");
@@ -168,6 +174,11 @@ int main()
         glClear(GL_COLOR_BUFFER_BIT); // Clear the screen
         // Dispatch the compute shader
         glUseProgram(computeProgram);
+        glUniform3fv(glGetUniformLocation(computeProgram, "cameraPos"), 1, cameraPos);
+        glUniform3fv(glGetUniformLocation(computeProgram, "cameraDir"), 1, cameraDir);
+        glUniform3fv(glGetUniformLocation(computeProgram, "cameraUp"), 1, cameraUp);
+        glUniform3fv(glGetUniformLocation(computeProgram, "cameraRight"), 1, cameraRight);
+        glUniform1f(glGetUniformLocation(computeProgram, "cameraFov"), cameraFov);
         glDispatchCompute(640 / 16, 480 / 16, 1);
         checkOpenGLError();
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
