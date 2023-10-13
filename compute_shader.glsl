@@ -13,6 +13,10 @@ struct Block{
 //    struct Block pages[]; // The actual SVO data
 //};
 
+layout (std430, binding = 1) buffer svoData {
+    uint data[];
+};
+
 
 //layout (std430, binding = 2) buffer IndirectionGrid {
 //    uint grid[]; // Each element is an index into the SVOData buffer
@@ -23,7 +27,6 @@ struct Block{
 int mortonCode(int x, int y, int z)
 {
     x = x-2;
-    y = y-2;
     z = z-2;
 
     if (x < 0 || x > 3 || y < 0 || y > 3 || z < 0 || z > 3)
@@ -45,8 +48,8 @@ int mortonCode(vec3 pos)
 // set gridsize
 const int gridSize = 64;
 // set up a constant block for testing
-struct Block block1;
-uint svo[64] = uint[64](0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1);
+//struct Block block1;
+//uint svo[64] = uint[](0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1);
 
 int getBlockIndex(vec3 pos)
 {
@@ -70,9 +73,8 @@ uint getBlockDensity(vec3 pos, uint index)
     int morton = mortonCode(x, y, z);
     if (morton < 0) return 0;
     if (morton > 63) return 0;
-    return 1;
-    uint res = svo[morton];
-    return res;
+    if (data[morton] == 1) return 1;
+    return 0;
 }
 
 uniform vec3 cameraPos;
@@ -89,7 +91,7 @@ void main() {
     //cameraDir = normalize(cameraDir);
     cameraRight = normalize(cross(cameraDir, worldUp));
     cameraUp = normalize(cross(cameraRight, cameraDir));
-    block1.voxels = svo;
+    //block1.voxels = svo;
     ivec2 storePos = ivec2(gl_GlobalInvocationID.xy);
     vec2 fragCoord = vec2(storePos) / vec2(640, 480); // Assuming a 640x480 resolution
 

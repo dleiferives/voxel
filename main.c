@@ -231,6 +231,26 @@ int main()
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
+
+
+    // create svo block
+    int data[64];
+    for(int i = 0; i < 64; i++) {
+        data[i] = i % 11 % 3 ;
+    }
+
+    GLuint buffer;
+    GLuint binding_point = 1; // This should match the binding point in your shader.
+    GLsizeiptr size = sizeof(data); // Size of your data in bytes.
+    void* data_ptr = (void*) data; // Pointer to your data.
+
+    glGenBuffers(1, &buffer);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, size, data_ptr, GL_STATIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding_point, buffer);
+
+
+
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
@@ -246,9 +266,11 @@ int main()
         //glUniform3fv(glGetUniformLocation(computeProgram, "cameraRight"), 1, cameraRight);
         glUniform3fv(glGetUniformLocation(computeProgram, "worldUp"), 1, worldUp);
         glUniform1f(glGetUniformLocation(computeProgram, "cameraFov"), cameraFov);
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer);
         glDispatchCompute(640 / 16, 480 / 16, 1);
         checkOpenGLError();
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
 
         // Render the texture to the screen
         glUseProgram(shaderProgram);
@@ -267,6 +289,8 @@ int main()
         glfwPollEvents();
     }
 
+
+    glDeleteBuffers(1, &buffer);
     // Cleanup
     glDeleteTextures(1, &texOutput);
     glDeleteProgram(computeProgram);
