@@ -112,9 +112,36 @@ void mouse_callback(void* window, double xpos, double ypos) {
     normalize(cameraDir);
 }
 
+void processInput(GLFWwindow *window, float deltaTime, float cameraSpeed, float cameraPos[3], float cameraDir[3])
+{
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    {
+        cameraPos[0] += cameraSpeed * cameraDir[0] * deltaTime;
+        cameraPos[1] += cameraSpeed * cameraDir[1] * deltaTime;
+        cameraPos[2] += cameraSpeed * cameraDir[2] * deltaTime;
+    }
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    {
+        cameraPos[0] -= cameraSpeed * cameraDir[0] * deltaTime;
+        cameraPos[1] -= cameraSpeed * cameraDir[1] * deltaTime;
+        cameraPos[2] -= cameraSpeed * cameraDir[2] * deltaTime;
+    }
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    {
+        // Move left; not implemented yet
+    }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    {
+        // Move right; not implemented yet
+    }
+}
+
 
 int main()
 {
+    float deltaTime = 0.0f;
+    float lastFrame = 0.0f;
+
     // Initialize the GLFW library
     if (!glfwInit())
     {
@@ -254,6 +281,13 @@ int main()
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+
+        processInput(window, deltaTime, 2.5f, cameraPos, cameraDir);  // 2.5f is the camera speed
+
+
         // print out the camera direction
         printf("cameraDir: %f %f %f\n", cameraDir[0], cameraDir[1], cameraDir[2]);
         glClearColor(0.0f, 0.0f, 0.4f, 0.0f); // Set background color
