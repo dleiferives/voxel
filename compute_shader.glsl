@@ -148,6 +148,9 @@ void main() {
         pixel = vec4(normalize(rayDir), 1.0);
     }
 
+    // mix the pixel color with black based on depth (t)
+    pixel = mix(pixel, vec4(0.0, 0.0, 0.0, 1.0), t * 0.1);
+
 
     imageStore(destTex, storePos, pixel);
 }
