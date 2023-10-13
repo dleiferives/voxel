@@ -3,7 +3,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
+
 #define _CRT_SECURE_NO_WARNINGS
+
+#define M_PI 3.1415962654
 
 char* readFile(const char* filename) {
     FILE* file = fopen(filename, "rb");
@@ -58,6 +62,57 @@ void checkOpenGLError() {
     }
 }
 
+float lastX = 320, lastY = 240;  // assuming your window starts at 640x480
+float yaw = -90.0f, pitch = 0.0f;
+int firstMouse = 1;
+float cameraDir[3];
+
+float cameraUp[3];
+float cameraRight[3];
+
+void normalize(float vec[3]) {
+    float length = sqrt(vec[0]*vec[0] + vec[1]*vec[1] + vec[2]*vec[2]);
+    vec[0] /= length;
+    vec[1] /= length;
+    vec[2] /= length;
+}
+
+void mouse_callback(void* window, double xpos, double ypos) {
+    static double lastX = 0.0;  // Initialize these at the start
+    static double lastY = 0.0;
+
+    double xoffset = xpos - lastX;
+    double yoffset = lastY - ypos;
+    lastX = xpos;
+    lastY = ypos;
+
+    float sensitivity = 0.1f;
+    xoffset *= sensitivity;
+    yoffset *= sensitivity;
+
+    // Assuming pitch and yaw are initialized to 0.0
+    static float pitch = 0.0f;
+    static float yaw = 0.0f;
+
+    pitch += yoffset;
+    yaw += xoffset;
+
+    // Make sure that when pitch is out of bounds, the screen doesn't get flipped
+    if(pitch > 89.0f)
+        pitch = 89.0f;
+    if(pitch < -89.0f)
+        pitch = -89.0f;
+
+    // Update camera direction based on updated Euler angles
+    cameraDir[0] = cos(pitch * M_PI / 180.0f) * cos(yaw * M_PI / 180.0f);
+    cameraDir[1] = sin(pitch * M_PI / 180.0f);
+    cameraDir[2] = cos(pitch * M_PI / 180.0f) * sin(yaw * M_PI / 180.0f);
+
+    // Assuming you have a normalize function for a 3-element float array
+    normalize(cameraDir);
+}
+
+
 int main()
 {
     // Initialize the GLFW library
@@ -86,11 +141,20 @@ int main()
         return -1;
     }
 
-    float cameraPos[3] = { 0,0,0 };
-    float cameraDir[3] = { 0,0,0 };
+    float cameraPos[3] = { 1,1,0 };
+    cameraDir[0] = 0.3;
+    cameraDir[1] = 0.3;
+    cameraDir[2] = 0.3;
+
     float cameraUp[3] = { 0,0,0 };
     float cameraRight[3] = { 0,0,0 };
-    float cameraFov = 75;
+    float worldUp[3] = { 0,1,0 };
+    float cameraFov = 2;
+
+    glfwSetCursorPosCallback(window, (GLFWcursorposfun) mouse_callback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+
 
     char* vertexShaderSource = readFile("vertex_shader.glsl");
     char* fragmentShaderSource = readFile("fragment_shader.glsl");
@@ -170,14 +234,17 @@ int main()
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
+        // print out the camera direction
+        printf("cameraDir: %f %f %f\n", cameraDir[0], cameraDir[1], cameraDir[2]);
         glClearColor(0.0f, 0.0f, 0.4f, 0.0f); // Set background color
         glClear(GL_COLOR_BUFFER_BIT); // Clear the screen
         // Dispatch the compute shader
         glUseProgram(computeProgram);
         glUniform3fv(glGetUniformLocation(computeProgram, "cameraPos"), 1, cameraPos);
         glUniform3fv(glGetUniformLocation(computeProgram, "cameraDir"), 1, cameraDir);
-        glUniform3fv(glGetUniformLocation(computeProgram, "cameraUp"), 1, cameraUp);
-        glUniform3fv(glGetUniformLocation(computeProgram, "cameraRight"), 1, cameraRight);
+        //glUniform3fv(glGetUniformLocation(computeProgram, "cameraUp"), 1, cameraUp);
+        //glUniform3fv(glGetUniformLocation(computeProgram, "cameraRight"), 1, cameraRight);
+        glUniform3fv(glGetUniformLocation(computeProgram, "worldUp"), 1, worldUp);
         glUniform1f(glGetUniformLocation(computeProgram, "cameraFov"), cameraFov);
         glDispatchCompute(640 / 16, 480 / 16, 1);
         checkOpenGLError();
