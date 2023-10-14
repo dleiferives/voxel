@@ -3,16 +3,44 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <windows.h>
 #include <math.h>
 
 #define _CRT_SECURE_NO_WARNINGS
 
 #define M_PI 3.1415962654
 
+struct ChildNode{
+    int isLeaf;
+    int address;
+    struct ChildNode* children[8];
+};
+
+struct RootNode{
+    int x;
+    int y;
+    int z;
+    int isLeaf;
+    int address;
+    struct ChildNode* children[8];
+};
+
+
 char* readFile(const char* filename) {
     FILE* file = fopen(filename, "rb");
     if (file == NULL) {
         fprintf(stderr, "Failed to open file: %s\n", filename);
+        DWORD bufferSize = MAX_PATH;
+        char buffer[MAX_PATH];
+
+        if (GetCurrentDirectory(bufferSize, buffer) != 0) {
+            printf("Current directory: %s\n", buffer);
+        }
+        else {
+            // Handle error
+            fprintf(stderr, "Failed to get the current directory. Error code: %d\n", GetLastError());
+        }
+        exit(1);
         return NULL;
     }
 
@@ -275,10 +303,16 @@ int main()
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer);
     glBufferData(GL_SHADER_STORAGE_BUFFER, size, data_ptr, GL_STATIC_DRAW);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, binding_point, buffer);
+    float debugData[4]; // Assuming you want to read 4 float values
 
 
+    GLuint debugDataUBO;
+    glGenBuffers(1, &debugDataUBO); // Generate a buffer object
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, debugDataUBO); // Bind it as a shader storage buffer
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(float) * 4, NULL, GL_DYNAMIC_DRAW); // Allocate storage for the SSBO
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, debugDataUBO); // Bind the SSBO to binding point 3
 
-    // Main loop
+// Main loop
     while (!glfwWindowShouldClose(window))
     {
         float currentFrame = glfwGetTime();
@@ -286,7 +320,6 @@ int main()
         lastFrame = currentFrame;
 
         processInput(window, deltaTime, 2.5f, cameraPos, cameraDir);  // 2.5f is the camera speed
-
 
         // print out the camera direction
         printf("cameraDir: %f %f %f\n", cameraDir[0], cameraDir[1], cameraDir[2]);
@@ -296,15 +329,21 @@ int main()
         glUseProgram(computeProgram);
         glUniform3fv(glGetUniformLocation(computeProgram, "cameraPos"), 1, cameraPos);
         glUniform3fv(glGetUniformLocation(computeProgram, "cameraDir"), 1, cameraDir);
-        //glUniform3fv(glGetUniformLocation(computeProgram, "cameraUp"), 1, cameraUp);
-        //glUniform3fv(glGetUniformLocation(computeProgram, "cameraRight"), 1, cameraRight);
         glUniform3fv(glGetUniformLocation(computeProgram, "worldUp"), 1, worldUp);
         glUniform1f(glGetUniformLocation(computeProgram, "cameraFov"), cameraFov);
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer);
+        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, buffer); // Bind the SSBO for your compute shader
+        GLuint uniformBlockIndex = glGetUniformBlockIndex(shaderProgram, "DebugDataBuffer");
+        glUniformBlockBinding(shaderProgram, uniformBlockIndex, 3);
         glDispatchCompute(640 / 16, 480 / 16, 1);
         checkOpenGLError();
         glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+        printf("Compute Shader Dispatched\n");
 
+        glBindBuffer(GL_UNIFORM_BUFFER, debugDataUBO);
+        float* debugDataPtr = (float*)glMapBufferRange(GL_UNIFORM_BUFFER, 0, sizeof(float) * 4, GL_MAP_READ_BIT);
+
+        printf("Debug Data: %f %f %f %f\n", debugDataPtr[0], debugDataPtr[1], debugDataPtr[2], debugDataPtr[3]);
+        glUnmapBuffer(GL_UNIFORM_BUFFER);
 
         // Render the texture to the screen
         glUseProgram(shaderProgram);
@@ -322,6 +361,7 @@ int main()
         // Poll for and process events
         glfwPollEvents();
     }
+
 
 
     glDeleteBuffers(1, &buffer);
