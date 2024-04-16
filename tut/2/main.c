@@ -62,7 +62,9 @@ void app_init(){
 
         // Set up the camera
         cam = gs_camera_perspective();
-
+        cam.transform.position = (gs_vec3){4.0,3.0,3.0};
+        cam.transform.scale = (gs_vec3){1.0,1.0,1.0};
+        cam.transform.rotation = (gs_vec3){0.0,1.0,0.0};
         // Set up our vertex buffer 
         vbo_triangle = gs_graphics_vertex_buffer_create(
                 &(gs_graphics_vertex_buffer_desc_t) {
