@@ -69,10 +69,10 @@ float v_cube[] = {
     -1.0f, 1.0f, 1.0f,
     1.0f, 1.0f, 1.0f,
     -1.0f, 1.0f, 1.0f,
-    1.0f,-1.0f, 1.0f
-};
+    1.0f,-1.0f, 1.0f,
+//};
 
-float a_colors[] = {
+//float a_colors[] = {
     0.583f,  0.771f,  0.014f,
     0.609f,  0.115f,  0.436f,
     0.327f,  0.483f,  0.844f,
@@ -115,9 +115,9 @@ const char* fragment_shader =
         GS_GL_VERSION_STR 
         "precision mediump float;\n"
         "in vec3 f_color;\n"
-        "out vec3 color;\n"
+        "out vec4 color;\n"
         "void main(){\n"
-        "       color = f_color;\n"
+        "       color = vec4(f_color,1.0);\n"
         "}\n";
 
 const char* vertex_shader = 
@@ -131,6 +131,7 @@ const char* vertex_shader =
         "};\n"
         "void main(){\n" // Note that the model position is the identity matrix for a mat4
         "   gl_Position = projection * view * mat4(1.0) *  vec4(a_pos, 1.0);\n"
+        "   f_color = a_color;\n"
         "}\n";
 
 gs_command_buffer_t                    command_buffer = {0};
@@ -168,14 +169,6 @@ void app_init(){
                 &(gs_graphics_vertex_buffer_desc_t) {
                         .data = v_cube,
                         .size = sizeof(v_cube)
-                }
-        );
-        //
-        // Set up our vertex buffer 
-        vbo_color = gs_graphics_vertex_buffer_create(
-                &(gs_graphics_vertex_buffer_desc_t) {
-                        .data = a_colors,
-                        .size = sizeof(a_colors)
                 }
         );
 
@@ -235,7 +228,7 @@ void app_init(){
                         },
                         .layout = {
                                 .attrs = (gs_graphics_vertex_attribute_desc_t[]) {
-                                        {.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3, .name = "a_pos"},
+                                        {.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3, .name = "a_pos", .buffer_idx = 0},
                                         {.format =  GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3, .name = "a_color", .buffer_idx = 1}
                                 },
                                 .size = sizeof(gs_graphics_vertex_attribute_desc_t)
@@ -289,8 +282,8 @@ void app_update(){
 
 
         gs_graphics_bind_vertex_buffer_desc_t v_buffers[2] = {
-                (gs_graphics_bind_vertex_buffer_desc_t){.buffer = vbo_cube},
-                (gs_graphics_bind_vertex_buffer_desc_t){.buffer = vbo_color}
+                (gs_graphics_bind_vertex_buffer_desc_t){.buffer = vbo_cube, .offset = 0, .data_type=GS_GRAPHICS_VERTEX_DATA_NONINTERLEAVED},
+                (gs_graphics_bind_vertex_buffer_desc_t){.buffer = vbo_cube, .offset = 24 * 3 * sizeof(float), .data_type=GS_GRAPHICS_VERTEX_DATA_NONINTERLEAVED}
         };
         // Render //
         gs_graphics_renderpass_begin(&command_buffer, GS_GRAPHICS_RENDER_PASS_DEFAULT);
@@ -300,8 +293,8 @@ void app_update(){
 
                 gs_graphics_bind_desc_t binds = {
                         .vertex_buffers = {
-                               .desc = v_buffers ,
-                                .size = 2
+                                .desc = v_buffers ,
+                                .size = sizeof(v_buffers) 
                         },
                         .uniform_buffers = {
                                 &(gs_graphics_bind_uniform_buffer_desc_t){
