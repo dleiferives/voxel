@@ -1,6 +1,12 @@
 #define GS_IMPL
 #include "../include/gs/gs.h"
 
+#ifdef GS_PLATFORM_WEB
+    #define GS_GL_VERSION_STR "#version 300 es\n"
+#else
+    #define GS_GL_VERSION_STR "#version 430 core\n"
+#endif
+
 // DATA ////////////////////////////////////////////////////////////////////////
 
 float v_triangle[] ={
@@ -9,8 +15,21 @@ float v_triangle[] ={
    0.0f,  1.0f, 0.0f,
 };
 
-const char* fragment_shader = "";
-const char* vertex_shader = "";
+const char* fragment_shader = 
+        GS_GL_VERSION_STR 
+        "precision mediump float;\n"
+        "out vec3 color;\n"
+        "void main(){\n"
+        "       color = vec3(1,0,0);\n"
+        "}\n";
+
+const char* vertex_shader = 
+        GS_GL_VERSION_STR
+        "layout(location = 0) in vec3 a_pos;\n"
+        "void main(){\n"
+        "       gl_Position.xyz = a_pos;\n"
+        "       gl_Position.w = 1.0;\n"
+        "}\n";
 
 gs_command_buffer_t                    command_buffer = {0};
 gs_handle(gs_graphics_vertex_buffer_t)   vbo_triangle = {0};
@@ -105,7 +124,7 @@ void app_update(){
                 gs_graphics_draw(&command_buffer, 
                                  &(gs_graphics_draw_desc_t){
                                         .start = 0,
-                                        .count = 36
+                                        .count = 3
                                  }
                 );
         gs_graphics_renderpass_end(&command_buffer);

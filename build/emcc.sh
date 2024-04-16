@@ -18,7 +18,7 @@ inc=(
 
 # Source files
 src=(
-    ../src/main.c
+    ../tut/main.c
 )
 
 libs=(
