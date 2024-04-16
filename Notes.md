@@ -9,3 +9,8 @@
 
 # NOTE:
  -- vec4(x,y,z,w). w==0 then it is a vector, w==1 it is a position
+ -- matrix multiplication works from left to right
+    - trans * rot * scale * orig
+    -> original gets scaled then rotated then translated!
+-- To use uniform buffers (like for Model View projection!, use the uniform buffer t, which can take in a struct!)
+
