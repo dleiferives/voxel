@@ -124,7 +124,7 @@ const char* vertex_shader =
         "precision mediump float;\n"
         "layout(location = 0) in vec3 a_pos;\n"
         "layout(location = 1) in vec3 a_color;\n"
-        "layout(location = 1) in float a_offset;\n"
+        "layout(location = 2) in float a_offset;\n"
         "out vec3 f_color;\n"
         "layout (std140) uniform ub_vp {\n"
         "   mat4 projection;\n"
@@ -132,7 +132,7 @@ const char* vertex_shader =
         "};\n"
         "void main(){\n" // Note that the model position is the identity matrix for a mat4
         "vec3 pos = vec3(a_pos.x + float((gl_InstanceID >> 4) & 0xF)/, a_pos.y + float(gl_InstanceID & 0xF), a_pos.z);\n"
-        "   gl_Position = projection * view * mat4(1.0) *  vec4(a_pos, 1.0);\n"
+        "   gl_Position = projection * view * mat4(1.0) *  vec4(pos, 1.0);\n"
         "   f_color = a_color;\n"
         "}\n";
 
