@@ -170,6 +170,12 @@ void app_init(){
         fps.cam = gs_camera_perspective();
 
 
+        // Set up g_translations
+        // do a 3d sin wave where g_translations[i] = height, x = index % 16, y = index // 16
+        for(int i = 0; i < 256; ++i) {
+                g_translations[i] = sin((float)(i) / 16.f) + sin((float)(i % 16)) + 1.0;
+        }
+
         // Set up instancing
         inst_vbo = gs_graphics_vertex_buffer_create(
                         &(gs_graphics_vertex_buffer_desc_t) {
