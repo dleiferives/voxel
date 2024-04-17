@@ -175,7 +175,7 @@ void app_init(){
 
             // Gaussian parameters
             float mu_x = 0, mu_z = 0; // Center at (0,0) since we adjusted coordinates
-            float sigma_x = 8.0, sigma_z = 8.0; // Control the spread of the bell curve
+            float sigma_x = 4.0, sigma_z = 4.0; // Control the spread of the bell curve
             float a = 1.0; // Amplitude
 
             // Calculate Gaussian value
@@ -184,7 +184,7 @@ void app_init(){
             float gaussian = a * exp(exponent);
 
             // Store the result
-            g_translations[i] = gaussian * 2.0f;
+            g_translations[i] = gaussian * 10.0f;
         }
        
         // Set up instancing
