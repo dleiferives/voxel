@@ -131,7 +131,7 @@ const char* vertex_shader =
         "   mat4 view;\n"
         "};\n"
         "void main(){\n" // Note that the model position is the identity matrix for a mat4
-        "vec3 pos = vec3(a_pos.x + float((gl_InstanceID >> 4) & 0xF), a_pos.y + float(gl_InstanceID & 0xF), a_pos.z);\n"
+        "vec3 pos = vec3(a_pos.x + float((gl_InstanceID >> 4) & 0xF)/10.0, a_pos.y , a_pos.z + float(gl_InstanceID & 0xF))/10.0;\n"
         "   gl_Position = projection * view * mat4(1.0) *  vec4(pos, 1.0);\n"
         "   f_color = a_color;\n"
         "}\n";
