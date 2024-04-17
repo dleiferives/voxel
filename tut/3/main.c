@@ -70,9 +70,6 @@ float v_cube[] = {
     1.0f, 1.0f, 1.0f,
     -1.0f, 1.0f, 1.0f,
     1.0f,-1.0f, 1.0f,
-//};
-
-//float a_colors[] = {
     0.583f,  0.771f,  0.014f,
     0.609f,  0.115f,  0.436f,
     0.327f,  0.483f,  0.844f,
@@ -115,9 +112,9 @@ const char* fragment_shader =
         GS_GL_VERSION_STR 
         "precision mediump float;\n"
         "in vec3 f_color;\n"
-        "out vec4 color;\n"
+        "out vec3 color;\n"
         "void main(){\n"
-        "       color = vec4(f_color,1.0);\n"
+        "       color = f_color;\n"
         "}\n";
 
 const char* vertex_shader = 
@@ -219,6 +216,11 @@ void app_init(){
                 }
         );
 
+        gs_graphics_vertex_attribute_desc_t vattrs[] = {
+                (gs_graphics_vertex_attribute_desc_t){.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3, .name = "a_pos", .buffer_idx = 0}, // Position
+                (gs_graphics_vertex_attribute_desc_t){.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3, .name = "a_color", .buffer_idx = 1}, // Color
+        };
+
         // Set up pipeline
         pipeline = gs_graphics_pipeline_create(
                 &(gs_graphics_pipeline_desc_t) {
@@ -227,11 +229,8 @@ void app_init(){
                                 .func = GS_GRAPHICS_DEPTH_FUNC_LESS
                         },
                         .layout = {
-                                .attrs = (gs_graphics_vertex_attribute_desc_t[]) {
-                                        {.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3, .name = "a_pos", .buffer_idx = 0},
-                                        {.format =  GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3, .name = "a_color", .buffer_idx = 1}
-                                },
-                                .size = sizeof(gs_graphics_vertex_attribute_desc_t)
+                                .attrs = vattrs, 
+                                .size = sizeof(vattrs)
                         }
                         
                         
@@ -283,7 +282,8 @@ void app_update(){
 
         gs_graphics_bind_vertex_buffer_desc_t v_buffers[2] = {
                 (gs_graphics_bind_vertex_buffer_desc_t){.buffer = vbo_cube, .offset = 0, .data_type=GS_GRAPHICS_VERTEX_DATA_NONINTERLEAVED},
-                (gs_graphics_bind_vertex_buffer_desc_t){.buffer = vbo_cube, .offset = 24 * 3 * sizeof(float), .data_type=GS_GRAPHICS_VERTEX_DATA_NONINTERLEAVED}
+                // NOTE: the offset needs to be the index of the color data
+                (gs_graphics_bind_vertex_buffer_desc_t){.buffer = vbo_cube, .offset = 36 * 3 * sizeof(float), .data_type=GS_GRAPHICS_VERTEX_DATA_NONINTERLEAVED}
         };
         // Render //
         gs_graphics_renderpass_begin(&command_buffer, GS_GRAPHICS_RENDER_PASS_DEFAULT);
@@ -309,7 +309,9 @@ void app_update(){
                 gs_graphics_draw(&command_buffer, 
                                  &(gs_graphics_draw_desc_t){
                                         .start = 0,
-                                        .count = sizeof(v_cube) / (3 * sizeof(float))
+                                        // note count needs to be for the number of
+                                        // vertexes, not the number of floats
+                                        .count = 36 
                                  }
                 );
         gs_graphics_renderpass_end(&command_buffer);
