@@ -17,7 +17,7 @@
 
 // FPS CAMERA //////////////////////////////////////////////////////////////////
 #define SENSITIVITY 0.1f
-#define CAM_SPEED 5.f
+#define CAM_SPEED 10.f
 
 typedef struct fps_camera_t {
     float pitch;
@@ -108,7 +108,7 @@ float v_cube[] = {
     0.982f,  0.099f,  0.879f
 };
 
-float g_translations[256] = {0};
+float g_translations[1204] = {0};
 
 const char* fragment_shader = 
         GS_GL_VERSION_STR 
@@ -131,9 +131,9 @@ const char* vertex_shader =
         "   mat4 view;\n"
         "};\n"
         "void main(){\n" // Note that the model position is the identity matrix for a mat4
-        "float x = float(gl_InstanceID % 16) * 2.0;"  // Modulo by 16 and scale
-        "float z = float(gl_InstanceID / 16) * 2.0;"  // Divide by 16 and scale
-        "vec3 pos = vec3(a_pos.x + x, a_pos.y + a_offset, a_pos.z + z);"
+        "float x = float(gl_InstanceID % 32) * 2.0;"  // Modulo by 16 and scale
+        "float z = float(gl_InstanceID / 32) * 2.0;"  // Divide by 16 and scale
+        "vec3 pos = vec3(a_pos.x + x - 16.0, a_pos.y + a_offset, a_pos.z + z - 16.0);"
         "   gl_Position = projection * view * mat4(1.0) *  vec4(pos, 1.0);\n"
         "   f_color = a_color;\n"
         "}\n";
@@ -169,13 +169,17 @@ void app_init(){
         // Set up the camera
         fps.cam = gs_camera_perspective();
 
+          for(int i = 0; i < 1024; ++i) {
+            int x = i % 32 - 16; // x goes from -16 to 15
+            int z = i / 32 - 16; // z goes from -16 to 15
 
-        // Set up g_translations
-        // do a 3d sin wave where g_translations[i] = height, x = index % 16, y = index // 16
-        for(int i = 0; i < 256; ++i) {
-                g_translations[i] = sin((float)(i) / 16.f) + sin((float)(i % 16)) + 1.0;
+            // Create a 3D sine wave centered at (0,0)
+            float wave = cos((float)x / 4.0) + cos((float)z / 4.0);
+
+            // Adjust wave height and center around 1.0 (vertical offset)
+            g_translations[i] = 4.5 * wave + 1.0;
         }
-
+       
         // Set up instancing
         inst_vbo = gs_graphics_vertex_buffer_create(
                         &(gs_graphics_vertex_buffer_desc_t) {
@@ -276,8 +280,6 @@ void app_update(){
 
 
         if (gs_platform_mouse_pressed(GS_MOUSE_LBUTTON) && !gs_platform_mouse_locked()) {
-                fps.cam.transform.rotation = gs_quat_default();
-                fps.pitch = 0.f;
                 gs_platform_lock_mouse(gs_platform_main_window(), true);
         }
 
@@ -338,7 +340,7 @@ void app_update(){
                                         // note count needs to be for the number of
                                         // vertexes, not the number of floats
                                         .count = 36 ,
-                                        .instances = 256
+                                        .instances = 1024 
                                  }
                 );
         gs_graphics_renderpass_end(&command_buffer);
@@ -361,7 +363,7 @@ void fps_camera_update(fps_camera_t* fps)
     gs_platform_t* platform = gs_subsystem(platform);
 
     gs_vec2 dp = gs_vec2_scale(gs_platform_mouse_deltav(), SENSITIVITY);
-    const float mod = gs_platform_key_down(GS_KEYCODE_LEFT_SHIFT) ? 2.f : 1.f;
+    const float mod = gs_platform_key_down(GS_KEYCODE_LEFT_CONTROL) ? 2.f : 1.f;
     float dt = platform->time.delta;
     float old_pitch = fps->pitch;
 
@@ -376,19 +378,9 @@ void fps_camera_update(fps_camera_t* fps)
     if (gs_platform_key_down(GS_KEYCODE_S)) vel = gs_vec3_add(vel, gs_camera_backward(&fps->cam));
     if (gs_platform_key_down(GS_KEYCODE_A)) vel = gs_vec3_add(vel, gs_camera_left(&fps->cam));
     if (gs_platform_key_down(GS_KEYCODE_D)) vel = gs_vec3_add(vel, gs_camera_right(&fps->cam));
-
-    // For a non-flying first person camera, need to lock the y movement velocity
-    vel.y = 0.f;
+if (gs_platform_key_down(GS_KEYCODE_SPACE)) vel.y += 1.f;
+        if (gs_platform_key_down(GS_KEYCODE_LEFT_SHIFT)) vel.y -= 1.f;
 
     fps->cam.transform.position = gs_vec3_add(fps->cam.transform.position, gs_vec3_scale(gs_vec3_norm(vel), dt * CAM_SPEED * mod));
 
-    // If moved, then we'll "bob" the camera some
-    if (gs_vec3_len(vel) != 0.f) {
-        fps->bob_time += dt * 8.f;
-        float sb = sin(fps->bob_time);
-        float bob_amt = (sb * 0.5f + 0.5f) * 0.1f * mod;
-        float rot_amt = sb * 0.0004f * mod;
-        fps->cam.transform.position.y = 2.f + bob_amt;
-        fps->cam.transform.rotation = gs_quat_mul(fps->cam.transform.rotation, gs_quat_angle_axis(rot_amt, GS_ZAXIS));
-    }
 }
