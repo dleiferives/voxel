@@ -169,16 +169,22 @@ void app_init(){
 
         // Set up the camera
         fps.cam = gs_camera_perspective();
-
-          for(int i = 0; i < 1024; ++i) {
+        for(int i = 0; i < 1024; ++i) {
             int x = i % 32 - 16; // x goes from -16 to 15
             int z = i / 32 - 16; // z goes from -16 to 15
 
-            // Create a 3D sine wave centered at (0,0)
-            float wave = cos((float)x / 4.0) + cos((float)z / 4.0);
+            // Gaussian parameters
+            float mu_x = 0, mu_z = 0; // Center at (0,0) since we adjusted coordinates
+            float sigma_x = 8.0, sigma_z = 8.0; // Control the spread of the bell curve
+            float a = 1.0; // Amplitude
 
-            // Adjust wave height and center around 1.0 (vertical offset)
-            g_translations[i] = 4.5 * wave + 1.0;
+            // Calculate Gaussian value
+            float exponent = -((x - mu_x) * (x - mu_x) / (2 * sigma_x * sigma_x) +
+                               (z - mu_z) * (z - mu_z) / (2 * sigma_z * sigma_z));
+            float gaussian = a * exp(exponent);
+
+            // Store the result
+            g_translations[i] = gaussian * 2.0f;
         }
        
         // Set up instancing
