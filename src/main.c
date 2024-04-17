@@ -184,7 +184,7 @@ void app_init(){
             float gaussian = a * exp(exponent);
 
             // Store the result
-            g_translations[i] = gaussian * 10.0f;
+            g_translations[i] = gaussian * 20.0f;
         }
        
         // Set up instancing
