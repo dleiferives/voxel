@@ -134,7 +134,7 @@ const char* vertex_shader =
         "float x = float(gl_InstanceID % 32) * 2.0 - 16.0;\n"  // Modulo by 16 and scale
         "float z = float(gl_InstanceID / 32) * 2.0 - 16.0;\n"  // Divide by 16 and scale
         "float distance = sqrt(pow(x, 2.0) + pow(z, 2.0));\n"
-        "vec3 pos = vec3(a_pos.x + x , (a_pos.y + a_offset)/max(1.0, distance), a_pos.z + z ;\n"
+        "vec3 pos = vec3(a_pos.x + x , (a_pos.y + a_offset), a_pos.z + z );\n"
         "   gl_Position = projection * view * mat4(1.0) *  vec4(pos, 1.0);\n"
         "   f_color = a_color;\n"
         "}\n";
