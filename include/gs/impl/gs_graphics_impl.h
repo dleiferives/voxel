@@ -56,9 +56,9 @@ typedef struct gsgl_uniform_t {
 
 // When a user passes in a uniform layout, that handle could then pass to a WHOLE list of uniforms (if describing a struct)
 typedef struct gsgl_uniform_list_t {
-    size_t size;                                // Total size of uniform data
-    char name[64];                           // Base name of uniform
     gs_dyn_array(gsgl_uniform_t) uniforms;      // Individual uniforms in list
+    size_t size;                                // Total size of uniform data
+    char name[64];                              // Base name of uniform
 } gsgl_uniform_list_t;
 
 typedef struct gsgl_uniform_buffer_t {
@@ -75,6 +75,7 @@ typedef struct gsgl_storage_buffer_t {
     int32_t access; 
     size_t size;
     uint32_t block_idx;
+    uint32_t location;
 } gsgl_storage_buffer_t;
 
 /* Pipeline */
@@ -192,6 +193,7 @@ void gsgl_pipeline_state()
     CHECK_GL_CORE(
         glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
     );
+    glDisable(GL_MULTISAMPLE);
 
     CHECK_GL_CORE(
         gs_graphics_info_t* info = gs_graphics_info();
@@ -251,10 +253,12 @@ uint32_t gsgl_texture_format_to_gl_data_type(gs_graphics_texture_format_type typ
         default:
         case GS_GRAPHICS_TEXTURE_FORMAT_A8:                 format = GL_UNSIGNED_BYTE; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_R8:                 format = GL_UNSIGNED_BYTE; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_R32:                format = GL_UNSIGNED_INT; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGB8:               format = GL_UNSIGNED_BYTE; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8:              format = GL_UNSIGNED_BYTE; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F:            format = GL_FLOAT; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F:            format = GL_FLOAT; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_R32F:               format = GL_FLOAT; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH8:             format = GL_FLOAT; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH16:            format = GL_FLOAT; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH24:            format = GL_FLOAT; break;
@@ -274,6 +278,8 @@ uint32_t gsgl_texture_format_to_gl_texture_format(gs_graphics_texture_format_typ
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8:              dt = GL_RGBA; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_A8:                 dt = GL_ALPHA; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_R8:                 dt = GL_RED; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_R32:                dt = GL_RED_INTEGER; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_R32F:               dt = GL_RED; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGB8:               dt = GL_RGB; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F:            dt = GL_RGBA; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F:            dt = GL_RGBA; break;
@@ -294,6 +300,8 @@ uint32_t gsgl_texture_format_to_gl_texture_internal_format(gs_graphics_texture_f
     switch (type) {
         case GS_GRAPHICS_TEXTURE_FORMAT_A8:                 format = GL_ALPHA; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_R8:                 format = GL_RED; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_R32:                format = GL_R32UI; break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_R32F:               format = GL_R32F; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGB8:               format = GL_RGB8; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8:              format = GL_RGBA8; break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F:            format = GL_RGBA16F; break;
@@ -409,6 +417,17 @@ uint32_t gsgl_depth_func_to_gl_depth_func(gs_graphics_depth_func_type type)
     return func;
 }
 
+bool gsgl_depth_mask_to_gl_mask(gs_graphics_depth_mask_type type)
+{
+    bool ret = true;
+    switch (type) {
+        default: 
+        case GS_GRAPHICS_DEPTH_MASK_ENABLED: ret = true; break;
+        case GS_GRAPHICS_DEPTH_MASK_DISABLED: ret = false; break; 
+    }
+    return ret;
+}
+
 uint32_t gsgl_stencil_func_to_gl_stencil_func(gs_graphics_stencil_func_type type)
 {
     uint32_t func = GL_ALWAYS;
@@ -454,6 +473,7 @@ gsgl_uniform_type gsgl_uniform_type_to_gl_uniform_type(gs_graphics_uniform_type 
         case GS_GRAPHICS_UNIFORM_VEC3: type = GSGL_UNIFORMTYPE_VEC3; break;
         case GS_GRAPHICS_UNIFORM_VEC4: type = GSGL_UNIFORMTYPE_VEC4; break;
         case GS_GRAPHICS_UNIFORM_MAT4: type = GSGL_UNIFORMTYPE_MAT4; break;
+        case GS_GRAPHICS_UNIFORM_USAMPLER2D: type = GSGL_UNIFORMTYPE_SAMPLER2D; break;
         case GS_GRAPHICS_UNIFORM_SAMPLER2D: type = GSGL_UNIFORMTYPE_SAMPLER2D; break;
         case GS_GRAPHICS_UNIFORM_SAMPLERCUBE: type = GSGL_UNIFORMTYPE_SAMPLERCUBE; break;
     }
@@ -535,6 +555,7 @@ size_t gsgl_uniform_data_size_in_bytes(gs_graphics_uniform_type type)
         case GS_GRAPHICS_UNIFORM_VEC4:  sz = 4 * sizeof(float); break;
         case GS_GRAPHICS_UNIFORM_MAT4:  sz = 16 * sizeof(float); break;
         case GS_GRAPHICS_UNIFORM_SAMPLER2D:  sz = sizeof(gs_handle(gs_graphics_texture_t)); break;  // handle size
+        case GS_GRAPHICS_UNIFORM_USAMPLER2D:  sz = sizeof(gs_handle(gs_graphics_texture_t)); break;  // handle size
         case GS_GRAPHICS_UNIFORM_SAMPLERCUBE:  sz = sizeof(gs_handle(gs_graphics_texture_t)); break;  // handle size
         default: {
             sz = 0;
@@ -672,8 +693,11 @@ gsgl_texture_t gl_texture_update_internal(const gs_graphics_texture_desc_t* desc
             {
                 case GS_GRAPHICS_TEXTURE_FORMAT_A8: glTexImage2D(itarget, 0, GL_ALPHA, width, height, 0, GL_ALPHA, GL_UNSIGNED_BYTE, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_R8: glTexImage2D(itarget, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_R32: glTexImage2D(itarget, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_RG8: glTexImage2D(itarget, 0, GL_RG8, width, height, 0, GL_RG, GL_UNSIGNED_BYTE, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_RGB8: glTexImage2D(itarget, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8: glTexImage2D(itarget, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_R32F: glTexImage2D(itarget, 0, GL_R32F, width, height, 0, GL_RED, GL_FLOAT, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F: glTexImage2D(itarget, 0, GL_RGBA16F, width, height, 0, GL_RGBA, GL_FLOAT, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F: glTexImage2D(itarget, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH8: glTexImage2D(itarget, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
@@ -695,8 +719,11 @@ gsgl_texture_t gl_texture_update_internal(const gs_graphics_texture_desc_t* desc
             {
                 case GS_GRAPHICS_TEXTURE_FORMAT_A8: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_ALPHA, GL_UNSIGNED_BYTE, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_R8: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RED, GL_UNSIGNED_BYTE, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_R32: glTexImage2D(itarget, 0, GL_R32UI, width, height, 0, GL_RED_INTEGER, GL_UNSIGNED_INT, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_RG8: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RG, GL_UNSIGNED_BYTE, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_RGB8: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGB, GL_UNSIGNED_BYTE, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_RGBA8: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data); break;
+                case GS_GRAPHICS_TEXTURE_FORMAT_R32F: glTexImage2D(itarget, 0, GL_R32F, width, height, 0, GL_RED, GL_FLOAT, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGBA, GL_FLOAT, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_RGBA, GL_FLOAT, data); break;
                 case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH8: glTexSubImage2D(itarget, 0, (u32)desc->offset.x, (u32)desc->offset.y, width, height, GL_DEPTH_COMPONENT, GL_FLOAT, data); break;
@@ -1268,6 +1295,14 @@ gs_graphics_texture_desc_query(gs_handle(gs_graphics_texture_t) hndl, gs_graphic
     *out = tex->desc; 
 }
 
+GS_API_DECL size_t 
+gs_graphics_uniform_size_query(gs_handle(gs_graphics_uniform_t) hndl)
+{ 
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data; 
+    gsgl_uniform_list_t* u = gs_slot_array_getp(ogl->uniforms, hndl.id);
+    return u->uniforms[0].size;
+}
+
 // Resource Updates (main thread only) 
 GS_API_DECL void 
 gs_graphics_texture_update_impl(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc)
@@ -1275,7 +1310,12 @@ gs_graphics_texture_update_impl(gs_handle(gs_graphics_texture_t) hndl, gs_graphi
     if (!desc) return;
 
     gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data; 
-    gsgl_texture_t* tex = gs_slot_array_getp(ogl->textures, hndl.id); 
+    if (!gs_slot_array_handle_valid(ogl->textures, hndl.id))
+    {
+        gs_log_warning("Texture handle invalid: %zu", hndl.id);
+        return;
+    }
+    gl_texture_update_internal(desc, hndl.id);
 }
 
 GS_API_DECL void 
@@ -1363,6 +1403,40 @@ gs_graphics_storage_buffer_update_impl(gs_handle(gs_graphics_storage_buffer_t) h
     );
 } 
 
+GS_API_DECL void 
+gs_graphics_texture_read_impl(gs_handle(gs_graphics_texture_t) hndl, gs_graphics_texture_desc_t* desc)
+{ 
+    gsgl_data_t* ogl = (gsgl_data_t*)gs_subsystem(graphics)->user_data; 
+    if (!desc) return;
+    if (!gs_slot_array_handle_valid(ogl->textures, hndl.id))
+    {
+        gs_log_warning("Texture handle invalid: %zu", hndl.id);
+    }
+
+    gsgl_texture_t* tex = gs_slot_array_getp(ogl->textures, hndl.id);
+    // Bind texture
+    GLenum target = 0x00;
+    switch (tex->desc.type)
+    {
+        default: 
+        case GS_GRAPHICS_TEXTURE_2D:      {target = GL_TEXTURE_2D;} break;
+        case GS_GRAPHICS_TEXTURE_CUBEMAP: {target = GL_TEXTURE_CUBE_MAP;} break;
+    } 
+    uint32_t gl_format = gsgl_texture_format_to_gl_texture_format(tex->desc.format);
+    uint32_t gl_type = gsgl_texture_format_to_gl_data_type(tex->desc.format);
+    glBindTexture(target, tex->id);
+    glReadPixels(
+        desc->read.x, 
+        desc->read.y, 
+        desc->read.width, 
+        desc->read.height, 
+        gl_format, 
+        gl_type,
+        *desc->data
+    );
+    glBindTexture(target, 0x00);
+}
+
 #define __ogl_push_command(CB, OP_CODE, ...)\
 do {\
     gsgl_data_t* DATA = (gsgl_data_t*)gs_subsystem(graphics)->user_data;\
@@ -1439,6 +1513,7 @@ gs_graphics_texture_request_update(gs_command_buffer_t* cb, gs_handle(gs_graphic
         case GS_GRAPHICS_TEXTURE_FORMAT_RGB8:               num_comps = 3; data_type_size = sizeof(uint8_t); break;
         case GS_GRAPHICS_TEXTURE_FORMAT_A8:                 num_comps = 1; data_type_size = sizeof(uint8_t); break;
         case GS_GRAPHICS_TEXTURE_FORMAT_R8:                 num_comps = 1; data_type_size = sizeof(uint8_t); break;
+        case GS_GRAPHICS_TEXTURE_FORMAT_R32:                num_comps = 1; data_type_size = sizeof(uint32_t); break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA16F:            num_comps = 4; data_type_size = sizeof(float); break;
         case GS_GRAPHICS_TEXTURE_FORMAT_RGBA32F:            num_comps = 4; data_type_size = sizeof(float); break;
         case GS_GRAPHICS_TEXTURE_FORMAT_DEPTH8:             num_comps = 1; data_type_size = sizeof(float); break;
@@ -1527,6 +1602,8 @@ gs_graphics_storage_buffer_request_update(gs_command_buffer_t* cb, gs_handle(gs_
 
     // Return if handle not valid
     if (!hndl.id) return;
+
+    __gs_graphics_update_buffer_internal(cb, hndl.id, GS_GRAPHICS_BUFFER_SHADER_STORAGE, desc->usage, desc->size, desc->update.offset, desc->update.type, desc->data);
 }
 
 void gs_graphics_apply_bindings(gs_command_buffer_t* cb, gs_graphics_bind_desc_t* binds)
@@ -1756,6 +1833,7 @@ void gs_graphics_command_buffer_submit_impl(gs_command_buffer_t* cb)
                     }
                     if (action.flag & GS_GRAPHICS_CLEAR_STENCIL || action.flag == 0x00) {
                         bit |= GL_STENCIL_BUFFER_BIT;
+                        glStencilMask(~0);
                     }
 
                     glClear(bit);
@@ -2175,8 +2253,6 @@ void gs_graphics_command_buffer_submit_impl(gs_command_buffer_t* cb)
 
                             gsgl_shader_t shader = gs_slot_array_get(ogl->shaders, sid);
 
-                            static uint32_t location = UINT32_MAX;
-
                             if ((sbo->block_idx == UINT32_MAX && sbo->block_idx != UINT32_MAX - 1)) 
                             {
                                 // Get uniform location based on name and bound shader
@@ -2185,7 +2261,9 @@ void gs_graphics_command_buffer_submit_impl(gs_command_buffer_t* cb)
                                     int32_t params[1];
                                     GLenum props[1] = {GL_BUFFER_BINDING};
                                     glGetProgramResourceiv(shader, GL_SHADER_STORAGE_BLOCK, sbo->block_idx, 1, props, 1, NULL, params);
-                                    location = (uint32_t)params[0];
+                                    sbo->location = (uint32_t)params[0];
+                                    gs_println("Bind Storage Buffer: Binding \"%s\" to location %zu, block index: %zu, binding: %zu", 
+                                        sbo->name, sbo->location, sbo->block_idx, binding);
                                 );
 
                                 if (sbo->block_idx >= UINT32_MAX) {
@@ -2198,7 +2276,7 @@ void gs_graphics_command_buffer_submit_impl(gs_command_buffer_t* cb)
                             {
                                 // Not sure what this actually does atm... 
                                 CHECK_GL_CORE(
-                                    glShaderStorageBlockBinding(shader, sbo->block_idx, location);
+                                    glShaderStorageBlockBinding(shader, sbo->block_idx, sbo->location);
                                 );
                             } 
 
@@ -2230,7 +2308,7 @@ void gs_graphics_command_buffer_submit_impl(gs_command_buffer_t* cb)
                             uint32_t gl_format = gsgl_texture_format_to_gl_texture_internal_format(tex->desc.format);
 
                             // Bind image texture
-                            CHECK_GL_CORE(glBindImageTexture(0, tex->id, 0, GL_FALSE, 0, gl_access, gl_format);)
+                            CHECK_GL_CORE(glBindImageTexture(binding, tex->id, 0, GL_FALSE, 0, gl_access, gl_format);)
                         } break;
 
                         default: gs_assert(false); break;
@@ -2292,7 +2370,8 @@ void gs_graphics_command_buffer_submit_impl(gs_command_buffer_t* cb)
                 else {
                     glEnable(GL_DEPTH_TEST);    
                     glDepthFunc(gsgl_depth_func_to_gl_depth_func(pip->depth.func));
-                }
+                } 
+                glDepthMask(gsgl_depth_mask_to_gl_mask(pip->depth.mask));
 
                 /* Stencil */
                 if (!pip->stencil.func) {
@@ -2590,6 +2669,23 @@ void gs_graphics_command_buffer_submit_impl(gs_command_buffer_t* cb)
 
                         glBindBuffer(GL_UNIFORM_BUFFER, 0);
                     } break;
+
+                    case GS_GRAPHICS_BUFFER_SHADER_STORAGE:
+                    {
+                        gs_graphics_storage_buffer_desc_t desc = {
+                            .data = cb->commands.data + cb->commands.position,
+                            .size = sz,
+                            .usage = usage,
+                            .update = {
+                                .type = update_type,
+                                .offset = offset,
+                            },
+                        };
+                        gs_handle(gs_graphics_storage_buffer_t) hndl;
+                        hndl.id = id;
+                        gs_graphics_storage_buffer_update(hndl, &desc);
+
+                    } break;
                 }
 
                 // Advance past data
@@ -2671,7 +2767,10 @@ gs_graphics_init(gs_graphics_t* graphics)
             // Work group invocations
             glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, (int32_t*)&info->compute.max_work_group_invocations);
         }
-    )
+    ) 
+
+    const GLubyte* glslv = glGetString(GL_SHADING_LANGUAGE_VERSION);
+    gs_println("GLSL Version: %s", glslv);
 
     // Set up all function pointers for graphics context
 
@@ -2704,6 +2803,7 @@ gs_graphics_init(gs_graphics_t* graphics)
     graphics->api.index_buffer_update = gs_graphics_index_buffer_update_impl;
     graphics->api.storage_buffer_update = gs_graphics_storage_buffer_update_impl;
     graphics->api.texture_update = gs_graphics_texture_update_impl;
+    graphics->api.texture_read = gs_graphics_texture_read_impl;
 
     // Submission (Main Thread)
     graphics->api.command_buffer_submit = gs_graphics_command_buffer_submit_impl;

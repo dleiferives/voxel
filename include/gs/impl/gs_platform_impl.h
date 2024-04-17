@@ -695,11 +695,8 @@ GS_API_DECL int32_t gs_platform_mkdir_default_impl(const char* dir_path, int32_t
 { 
     #ifdef __MINGW32__
         return mkdir(dir_path);
-    #elif (defined __linux__ || defined __APPLE__)
-        return mkdir(dir_path, opt);
     #else
         return mkdir(dir_path, opt);
-        //return _mkdir(dir_path);
     #endif
 }
 
@@ -1711,6 +1708,9 @@ gs_platform_window_create_internal(const gs_platform_window_desc_t* desc)
     if (desc->num_samples) {
         glfwWindowHint(GLFW_SAMPLES, desc->num_samples); 
     }
+    else {
+        glfwWindowHint(GLFW_SAMPLES, 0);
+    }
 
     // Get monitor if fullscreen
     GLFWmonitor* monitor = NULL;
@@ -1982,6 +1982,17 @@ GS_API_DECL gs_vec2 gs_platform_monitor_sizev(uint32_t id)
     ms.x = (float)width;
     ms.y = (float)height;
     return ms;
+}
+
+GS_API_DECL void gs_platform_window_set_clipboard(uint32_t handle, const char* str)
+{
+    gs_platform_window_t* win = gs_slot_array_getp(gs_subsystem(platform)->windows, handle);
+    glfwSetClipboardString((GLFWwindow*)win->hndl, str);
+}
+GS_API_DECL const char* gs_platform_window_get_clipboard(uint32_t handle)
+{
+    gs_platform_window_t* win = gs_slot_array_getp(gs_subsystem(platform)->windows, handle);
+    return glfwGetClipboardString((GLFWwindow*)win->hndl);
 }
 
 void gs_platform_set_cursor(uint32_t handle, gs_platform_cursor cursor)
@@ -2335,6 +2346,7 @@ EM_BOOL gs_ems_size_changed_cb(int32_t type, const EmscriptenUiEvent* evt, void*
 EM_BOOL gs_ems_fullscreenchange_cb(int32_t type, const EmscriptenFullscreenChangeEvent* evt, void* user_data)
 {
     (void)user_data;
+    (void)evt;
     (void)type;
     gs_ems_t* ems = GS_EMS_DATA();
     // emscripten_get_element_css_size(ems->canvas_name, &ems->canvas_width, &ems->canvas_height);
@@ -2342,7 +2354,7 @@ EM_BOOL gs_ems_fullscreenchange_cb(int32_t type, const EmscriptenFullscreenChang
         EmscriptenFullscreenStrategy strategy;
         strategy.scaleMode = EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_STDDEF;
         strategy.filteringMode = EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT;
-        strategy.canvasResizedCallback = gs_ems_size_changed_cb;
+        strategy.canvasResizedCallback = (int (*)(int, const void*, void*)) gs_ems_size_changed_cb;
         emscripten_enter_soft_fullscreen(ems->canvas_name, &strategy);
         // gs_println("fullscreen!");
         // emscripten_enter_soft_fullscreen(ems->canvas_name, NULL);
