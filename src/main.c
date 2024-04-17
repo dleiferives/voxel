@@ -131,7 +131,9 @@ const char* vertex_shader =
         "   mat4 view;\n"
         "};\n"
         "void main(){\n" // Note that the model position is the identity matrix for a mat4
-        "vec3 pos = vec3(a_pos.x + float((gl_InstanceID >> 4) & 0xF)/10.0, a_pos.y , a_pos.z + float(gl_InstanceID & 0xF))/10.0;\n"
+        "float x = float(gl_InstanceID % 16) * 2.0;"  // Modulo by 16 and scale
+        "float z = float(gl_InstanceID / 16) * 2.0;"  // Divide by 16 and scale
+        "vec3 pos = vec3(a_pos.x + x, a_pos.y + a_offset, a_pos.z + z);"
         "   gl_Position = projection * view * mat4(1.0) *  vec4(pos, 1.0);\n"
         "   f_color = a_color;\n"
         "}\n";
@@ -166,6 +168,7 @@ void app_init(){
 
         // Set up the camera
         fps.cam = gs_camera_perspective();
+
 
         // Set up instancing
         inst_vbo = gs_graphics_vertex_buffer_create(
