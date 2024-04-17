@@ -108,6 +108,8 @@ float v_cube[] = {
     0.982f,  0.099f,  0.879f
 };
 
+gs_vec2 g_translations[256] = {0};
+
 const char* fragment_shader = 
         GS_GL_VERSION_STR 
         "precision mediump float;\n"

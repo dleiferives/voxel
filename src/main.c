@@ -1,11 +1,23 @@
-/*================================================================
-    * Version 0.0.1: implemented fps camera and cubes. based off the gunslinger
-    *         examples.
-    * Using gunslinger from John Jackson
-================================================================*/
+///////////////////////////////////////////////////////////////////////////////
+/// Copyright: Dylan Leifer-Ives 2024
+/// Using Gunslinger.
+/// Based off: 
+/// http://www.opengl-tutorial.org/beginners-tutorials/tutorial-4-a-colored-cube/
+///////////////////////////////////////////////////////////////////////////////
 #define GS_IMPL
 #include "../include/gs/gs.h"
-#include "data.c"
+
+#ifdef GS_PLATFORM_WEB
+    #define GS_GL_VERSION_STR "#version 300 es\n"
+#else
+    #define GS_GL_VERSION_STR "#version 430 core\n"
+#endif
+
+
+
+// FPS CAMERA //////////////////////////////////////////////////////////////////
+#define SENSITIVITY 0.1f
+#define CAM_SPEED 5.f
 
 typedef struct fps_camera_t {
     float pitch;
@@ -19,179 +31,319 @@ void fps_camera_update(fps_camera_t* cam);
 #define rand_range(MIN, MAX)\
     (rand() % (MAX - MIN + 1) + MIN)
 
-gs_command_buffer_t                      cb          = {0};
-//gs_camera_t                              cam         = {0};
-gs_handle(gs_graphics_vertex_buffer_t)   vbo         = {0};
-gs_handle(gs_graphics_pipeline_t)        pips[4]     = {0};
-gs_handle(gs_graphics_shader_t)          shaders[4]  = {0};
-gs_handle(gs_graphics_uniform_t)         u_model     = {0};
-gs_handle(gs_graphics_uniform_buffer_t)  u_vp        = {0};
+// DATA ////////////////////////////////////////////////////////////////////////
 
-typedef struct vparams_t {
-    gs_mat4 projection;
-    gs_mat4 view;
-} vparams_t;
+float v_cube[] = {
+    -1.0f,-1.0f,-1.0f, // triangle 1 : begin
+    -1.0f,-1.0f, 1.0f,
+    -1.0f, 1.0f, 1.0f, // triangle 1 : end
+    1.0f, 1.0f,-1.0f, // triangle 2 : begin
+    -1.0f,-1.0f,-1.0f,
+    -1.0f, 1.0f,-1.0f, // triangle 2 : end
+    1.0f,-1.0f, 1.0f,
+    -1.0f,-1.0f,-1.0f,
+    1.0f,-1.0f,-1.0f,
+    1.0f, 1.0f,-1.0f,
+    1.0f,-1.0f,-1.0f,
+    -1.0f,-1.0f,-1.0f,
+    -1.0f,-1.0f,-1.0f,
+    -1.0f, 1.0f, 1.0f,
+    -1.0f, 1.0f,-1.0f,
+    1.0f,-1.0f, 1.0f,
+    -1.0f,-1.0f, 1.0f,
+    -1.0f,-1.0f,-1.0f,
+    -1.0f, 1.0f, 1.0f,
+    -1.0f,-1.0f, 1.0f,
+    1.0f,-1.0f, 1.0f,
+    1.0f, 1.0f, 1.0f,
+    1.0f,-1.0f,-1.0f,
+    1.0f, 1.0f,-1.0f,
+    1.0f,-1.0f,-1.0f,
+    1.0f, 1.0f, 1.0f,
+    1.0f,-1.0f, 1.0f,
+    1.0f, 1.0f, 1.0f,
+    1.0f, 1.0f,-1.0f,
+    -1.0f, 1.0f,-1.0f,
+    1.0f, 1.0f, 1.0f,
+    -1.0f, 1.0f,-1.0f,
+    -1.0f, 1.0f, 1.0f,
+    1.0f, 1.0f, 1.0f,
+    -1.0f, 1.0f, 1.0f,
+    1.0f,-1.0f, 1.0f,
+    0.583f,  0.771f,  0.014f,
+    0.609f,  0.115f,  0.436f,
+    0.327f,  0.483f,  0.844f,
+    0.822f,  0.569f,  0.201f,
+    0.435f,  0.602f,  0.223f,
+    0.310f,  0.747f,  0.185f,
+    0.597f,  0.770f,  0.761f,
+    0.559f,  0.436f,  0.730f,
+    0.359f,  0.583f,  0.152f,
+    0.483f,  0.596f,  0.789f,
+    0.559f,  0.861f,  0.639f,
+    0.195f,  0.548f,  0.859f,
+    0.014f,  0.184f,  0.576f,
+    0.771f,  0.328f,  0.970f,
+    0.406f,  0.615f,  0.116f,
+    0.676f,  0.977f,  0.133f,
+    0.971f,  0.572f,  0.833f,
+    0.140f,  0.616f,  0.489f,
+    0.997f,  0.513f,  0.064f,
+    0.945f,  0.719f,  0.592f,
+    0.543f,  0.021f,  0.978f,
+    0.279f,  0.317f,  0.505f,
+    0.167f,  0.620f,  0.077f,
+    0.347f,  0.857f,  0.137f,
+    0.055f,  0.953f,  0.042f,
+    0.714f,  0.505f,  0.345f,
+    0.783f,  0.290f,  0.734f,
+    0.722f,  0.645f,  0.174f,
+    0.302f,  0.455f,  0.848f,
+    0.225f,  0.587f,  0.040f,
+    0.517f,  0.713f,  0.338f,
+    0.053f,  0.959f,  0.120f,
+    0.393f,  0.621f,  0.362f,
+    0.673f,  0.211f,  0.457f,
+    0.820f,  0.883f,  0.371f,
+    0.982f,  0.099f,  0.879f
+};
 
-void app_init()
-{
-    // Construct new command buffer
-    cb = gs_command_buffer_new();
+float g_translations[256] = {0};
 
-    // Set up camera
-//    cam = gs_camera_perspective();
-//    cam.transform.position = gs_v3(0.f, 0.f, 3.f);
-    fps.cam = gs_camera_perspective();
-    fps.cam.transform.position = gs_v3(4.f, 2.f, 4.f);
+const char* fragment_shader = 
+        GS_GL_VERSION_STR 
+        "precision mediump float;\n"
+        "in vec3 f_color;\n"
+        "out vec3 color;\n"
+        "void main(){\n"
+        "       color = f_color;\n"
+        "}\n";
 
-    // Construct vertex buffer
-    vbo = gs_graphics_vertex_buffer_create(
-        &(gs_graphics_vertex_buffer_desc_t) {
-            .data = v_data,
-            .size = sizeof(v_data)
-        }
-    );
+const char* vertex_shader = 
+        GS_GL_VERSION_STR
+        "precision mediump float;\n"
+        "layout(location = 0) in vec3 a_pos;\n"
+        "layout(location = 1) in vec3 a_color;\n"
+        "layout(location = 1) in float a_offset;\n"
+        "out vec3 f_color;\n"
+        "layout (std140) uniform ub_vp {\n"
+        "   mat4 projection;\n"
+        "   mat4 view;\n"
+        "};\n"
+        "void main(){\n" // Note that the model position is the identity matrix for a mat4
+        "vec3 pos = vec3(a_pos.x + float((gl_InstanceID >> 4) & 0xF)/, a_pos.y + float(gl_InstanceID & 0xF), a_pos.z);\n"
+        "   gl_Position = projection * view * mat4(1.0) *  vec4(a_pos, 1.0);\n"
+        "   f_color = a_color;\n"
+        "}\n";
 
-    // Create uniform buffer
-    u_vp = gs_graphics_uniform_buffer_create(
-        &(gs_graphics_uniform_buffer_desc_t){
-            .data = NULL,
-            .size = sizeof(vparams_t),
-            .name = "u_vp"
-        }
-    );
+gs_command_buffer_t                    command_buffer = {0};
+gs_handle(gs_graphics_pipeline_t)            pipeline = {0};
+gs_handle(gs_graphics_shader_t)                shader = {0};
+//gs_camera_t                                       cam = {0};
 
-    // Upload projection matrix into buffer
-    gs_vec2 ws = gs_platform_window_sizev(gs_platform_main_window());
-    gs_mat4 proj = gs_camera_get_proj(&(fps.cam), (int32_t)ws.x, (int32_t)ws.y);
+gs_handle(gs_graphics_vertex_buffer_t)   vbo_cube = {0};
+gs_handle(gs_graphics_vertex_buffer_t)   vbo_color= {0};
+gs_handle(gs_graphics_uniform_buffer_t)         ub_vp = {0};
+gs_handle(gs_graphics_vertex_buffer_t)  inst_vbo = {0};
 
-    // Update sub region of uniform buffer data with projection (won't change during runtime)
-    gs_graphics_uniform_buffer_request_update(&cb, u_vp,
-        &(gs_graphics_uniform_buffer_desc_t){
-            .data = &proj,
-            .size = sizeof(proj),
-            .update = {
-                .type = GS_GRAPHICS_BUFFER_UPDATE_SUBDATA,
-                .offset = 0
-            }
-        }
-    );
+typedef struct v_viewproj_t{
+        gs_mat4 projection;
+        gs_mat4 view;
+} v_viewproj_t;
 
-    u_model = gs_graphics_uniform_create (
-        &(gs_graphics_uniform_desc_t) {
-            .name = "u_model",
-            .layout = (gs_graphics_uniform_layout_desc_t[]){{.type = GS_GRAPHICS_UNIFORM_MAT4}}
-        }
-    );
 
-    const char* fshaders[4] = {
-        f_red_src,
-        f_blue_src,
-        f_green_src,
-        f_yellow_src
-    };
+// FORWARD FUNCTION DECLARATIONS ///////////////////////////////////////////////
+void app_init();
+void app_update();
 
-    // Create shaders and pipelines
-    for (uint32_t i = 0; i < 4; ++i)
-    {
-        shaders[i] = gs_graphics_shader_create (
-            &(gs_graphics_shader_desc_t) {
-                .sources = (gs_graphics_shader_source_desc_t[]){
-                    {.type = GS_GRAPHICS_SHADER_STAGE_VERTEX, .source = v_src},
-                    {.type = GS_GRAPHICS_SHADER_STAGE_FRAGMENT, .source = fshaders[i]}
-                },
-                .size = 2 * sizeof(gs_graphics_shader_source_desc_t),
-                .name = "color_shader"
-            }
+
+// FUNCTIONS ///////////////////////////////////////////////////////////////////
+
+void app_init(){
+
+        // Set up our command buffer to submit to gpu
+        command_buffer = gs_command_buffer_new();
+
+        // Set up the camera
+        fps.cam = gs_camera_perspective();
+
+        // Set up instancing
+        inst_vbo = gs_graphics_vertex_buffer_create(
+                        &(gs_graphics_vertex_buffer_desc_t) {
+                        .data = &g_translations[0],
+                        .size = sizeof(g_translations)
+                        }
         );
 
-        pips[i] = gs_graphics_pipeline_create (
-            &(gs_graphics_pipeline_desc_t) {
-                .raster = {
-                    .shader = shaders[i]
-                },
-                .blend = {
-                    .func = GS_GRAPHICS_BLEND_EQUATION_ADD,
-                    .src = GS_GRAPHICS_BLEND_MODE_SRC_ALPHA,
-                    .dst = GS_GRAPHICS_BLEND_MODE_ONE_MINUS_SRC_ALPHA
-                },
-                .depth = {
-                    .func = GS_GRAPHICS_DEPTH_FUNC_LESS
-                },
-                .layout = {
-                    .attrs = (gs_graphics_vertex_attribute_desc_t[]) {
-                        {.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3, .name = "a_pos"}        // Position
-                    },
-                    .size = sizeof(gs_graphics_vertex_attribute_desc_t)
+
+        // Set up our vertex buffer 
+        vbo_cube= gs_graphics_vertex_buffer_create(
+                &(gs_graphics_vertex_buffer_desc_t) {
+                        .data = v_cube,
+                        .size = sizeof(v_cube)
                 }
-            }
         );
-    }
 
+        // Create uniform buffer
+        ub_vp = gs_graphics_uniform_buffer_create(
+                &(gs_graphics_uniform_buffer_desc_t){
+                        .data = NULL,
+                        .size = sizeof(v_viewproj_t),
+                        .name = "ub_vp"
+                }
+        );
 
-    gs_platform_lock_mouse(gs_platform_main_window(), true);
+        // set up uniform buffer for view projection
+        gs_vec2 window_size = gs_platform_window_sizev(gs_platform_main_window());
+        gs_mat4 projection = gs_camera_get_proj(
+                &(fps.cam),
+                (uint32_t)window_size.x,
+                (uint32_t)window_size.y
+        );
+
+        // load the uniform buffer into the comand buffer
+        // note that this will only happen once / maybe once per resize, since
+        // this is just setting up the projection, which is only pased on the 
+        // window size 
+        gs_graphics_uniform_buffer_request_update(
+
+                &command_buffer,
+                ub_vp,
+                &(gs_graphics_uniform_buffer_desc_t){
+                        .data = &projection,
+                        .size = sizeof(projection),
+                        .update = {
+                                .type = GS_GRAPHICS_BUFFER_UPDATE_SUBDATA,
+                                .offset = 0
+                        }
+                }
+        );
+
+        // set up shaders
+        shader = gs_graphics_shader_create(
+                &(gs_graphics_shader_desc_t) {
+                        .sources = (gs_graphics_shader_source_desc_t[]){
+                                {.type = GS_GRAPHICS_SHADER_STAGE_VERTEX, .source = vertex_shader},
+                                {.type = GS_GRAPHICS_SHADER_STAGE_FRAGMENT, .source = fragment_shader},
+                        },
+                        .size = 2 * sizeof(gs_graphics_shader_source_desc_t),
+                        .name = "triangle_shader"
+                }
+        );
+
+        gs_graphics_vertex_attribute_desc_t vattrs[] = {
+                (gs_graphics_vertex_attribute_desc_t){.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3, .name = "a_pos", .buffer_idx = 0}, // Position
+                (gs_graphics_vertex_attribute_desc_t){.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT3, .name = "a_color", .buffer_idx = 1}, // Color
+                (gs_graphics_vertex_attribute_desc_t){.format = GS_GRAPHICS_VERTEX_ATTRIBUTE_FLOAT2, .name = "a_offset", .stride = sizeof(float), .offset = 0, .divisor = 1, .buffer_idx = 2},    // Offset (stride of total index vertex data, divisor is 1 for instance iteration)
+        };
+
+        // Set up pipeline
+        pipeline = gs_graphics_pipeline_create(
+                &(gs_graphics_pipeline_desc_t) {
+                        .raster = {.shader = shader},
+                        .depth = {
+                                .func = GS_GRAPHICS_DEPTH_FUNC_LESS
+                        },
+                        .layout = {
+                                .attrs = vattrs, 
+                                .size = sizeof(vattrs)
+                        }
+                        
+                        
+                }
+        );
+
+        
+
 }
 
-void app_update()
+void app_update(){
+        if (gs_platform_key_pressed(GS_KEYCODE_ESC)) gs_quit();
+        // Set up the fram buffer size
+        gs_vec2 fs = gs_platform_framebuffer_sizev(gs_platform_main_window());
+
+        // clear the screen 
+        gs_graphics_clear_desc_t clear = {.actions = &(gs_graphics_clear_action_t){.color = {0.1f, 0.1f, 0.1f, 1.f}}};
+
+
+        if (gs_platform_mouse_pressed(GS_MOUSE_LBUTTON) && !gs_platform_mouse_locked()) {
+                fps.cam.transform.rotation = gs_quat_default();
+                fps.pitch = 0.f;
+                gs_platform_lock_mouse(gs_platform_main_window(), true);
+        }
+
+        // Update camera
+        if (gs_platform_mouse_locked()) {
+                fps_camera_update(&fps);
+        }
+
+        // Camera view
+        // TODO: update with a fps camera
+        gs_mat4 view = gs_camera_get_view(&(fps.cam));
+
+        // Request view update once per frame!
+        gs_graphics_uniform_buffer_request_update(
+                &command_buffer,
+                ub_vp,
+                &(gs_graphics_uniform_buffer_desc_t){
+                        .data = &view,
+                        .size = sizeof(view),
+                        .update = {
+                                .type = GS_GRAPHICS_BUFFER_UPDATE_SUBDATA,
+                                .offset = sizeof(gs_mat4)
+                        }
+                }
+        );
+
+
+        gs_graphics_bind_vertex_buffer_desc_t v_buffers[3] = {
+                (gs_graphics_bind_vertex_buffer_desc_t){.buffer = vbo_cube, .offset = 0, .data_type=GS_GRAPHICS_VERTEX_DATA_NONINTERLEAVED},
+                // NOTE: the offset needs to be the index of the color data
+                (gs_graphics_bind_vertex_buffer_desc_t){.buffer = vbo_cube, .offset = 36 * 3 * sizeof(float), .data_type=GS_GRAPHICS_VERTEX_DATA_NONINTERLEAVED},
+                {.buffer = inst_vbo}
+        };
+        // Render //
+        gs_graphics_renderpass_begin(&command_buffer, GS_GRAPHICS_RENDER_PASS_DEFAULT);
+                gs_graphics_set_viewport(&command_buffer, 0,0, (uint32_t)fs.x, (uint32_t)fs.y );
+                // using the clear action
+                gs_graphics_clear(&command_buffer, &clear);
+
+                gs_graphics_bind_desc_t binds = {
+                        .vertex_buffers = {
+                                .desc = v_buffers ,
+                                .size = sizeof(v_buffers) 
+                        },
+                        .uniform_buffers = {
+                                &(gs_graphics_bind_uniform_buffer_desc_t){
+                                        .buffer = ub_vp,
+                                        .binding = 0
+                                }
+                        },
+                };
+
+                gs_graphics_pipeline_bind(&command_buffer,pipeline);
+                gs_graphics_apply_bindings(&command_buffer, &binds);
+                gs_graphics_draw(&command_buffer, 
+                                 &(gs_graphics_draw_desc_t){
+                                        .start = 0,
+                                        // note count needs to be for the number of
+                                        // vertexes, not the number of floats
+                                        .count = 36 ,
+                                        .instances = 256
+                                 }
+                );
+        gs_graphics_renderpass_end(&command_buffer);
+
+        gs_graphics_command_buffer_submit(&command_buffer);
+}
+
+
+gs_app_desc_t gs_main(int32_t argc, char** argv)
 {
-    if (gs_platform_key_pressed(GS_KEYCODE_ESC)) gs_quit();
-
-    gs_vec2 fs = gs_platform_framebuffer_sizev(gs_platform_main_window());
-
-    if (gs_platform_mouse_pressed(GS_MOUSE_LBUTTON) && !gs_platform_mouse_locked()) {
-        fps.cam.transform.rotation = gs_quat_default();
-        fps.pitch = 0.f;
-        gs_platform_lock_mouse(gs_platform_main_window(), true);
-    }
-
-    // Action for clearing the screen
-    gs_graphics_clear_desc_t clear = {.actions = &(gs_graphics_clear_action_t){.color = {0.1f, 0.1f, 0.1f, 1.f}}};
-
-    // Update camera
-    if (gs_platform_mouse_locked()) {
-        fps_camera_update(&fps);
-    }
-
-    gs_mat4 view = gs_camera_get_view(&fps.cam);
-
-    // Request buffer upate for view once per frame to be shared across pipelines
-    gs_graphics_uniform_buffer_request_update(&cb, u_vp,
-        &(gs_graphics_uniform_buffer_desc_t){
-            .data = &view,
-            .size = sizeof(view),
-            .update = {
-                .type = GS_GRAPHICS_BUFFER_UPDATE_SUBDATA,
-                .offset = sizeof(gs_mat4)
-            }
-        }
-    );
-
-    const float t = gs_platform_elapsed_time() * 0.001f;
-
-    gs_mat4 models[] = {
-        gs_mat4_mul(gs_mat4_translate(-0.75f, 0.75f, 0.0f), gs_mat4_rotatev(t, GS_XAXIS)),
-        gs_mat4_mul(gs_mat4_translate(0.75f, 0.75f, 0.0f), gs_mat4_rotatev(t, GS_YAXIS)),
-        gs_mat4_mul(gs_mat4_translate(-0.75f, -0.75f, 0.0f), gs_mat4_rotatev(t, GS_ZAXIS)),
-        gs_mat4_mul(gs_mat4_translate(0.75f, -0.75f, 0.0f), gs_mat4_rotatev(t, gs_v3(1.f, 0.f, 1.f)))
+    return (gs_app_desc_t){
+        .init = app_init,
+        .update = app_update
     };
-
-    /* Render */
-    gs_graphics_renderpass_begin(&cb, GS_GRAPHICS_RENDER_PASS_DEFAULT);
-        gs_graphics_set_viewport(&cb, 0, 0, (uint32_t)fs.x, (uint32_t)fs.y);
-        gs_graphics_clear(&cb, &clear);
-        for (uint32_t i = 0; i < 4; ++i) {
-            gs_graphics_bind_desc_t binds = {
-                .vertex_buffers = {&(gs_graphics_bind_vertex_buffer_desc_t){.buffer = vbo}},
-                .uniform_buffers = {&(gs_graphics_bind_uniform_buffer_desc_t){.buffer = u_vp, .binding = 0}},
-                .uniforms = {&(gs_graphics_bind_uniform_desc_t){.uniform = u_model, .data = &models[i]}}
-            };
-            gs_graphics_pipeline_bind(&cb, pips[i]);
-            gs_graphics_apply_bindings(&cb, &binds);
-            gs_graphics_draw(&cb, &(gs_graphics_draw_desc_t){.start = 0, .count = 36});
-        }
-    gs_graphics_renderpass_end(&cb);
-
-    // Submit command buffer (syncs to GPU, MUST be done on main thread where you have your GPU context created)
-    gs_graphics_command_buffer_submit(&cb);
 }
 
 
@@ -231,16 +383,3 @@ void fps_camera_update(fps_camera_t* fps)
         fps->cam.transform.rotation = gs_quat_mul(fps->cam.transform.rotation, gs_quat_angle_axis(rot_amt, GS_ZAXIS));
     }
 }
-gs_app_desc_t gs_main(int32_t argc, char** argv)
-{
-    return (gs_app_desc_t){
-        .init = app_init,
-        .update = app_update
-    };
-}
-
-
-
-
-
-
