@@ -368,10 +368,22 @@ void app_update(){
         gsi_camera2D(&gsi, fs.x, fs.y);
         gsi_rectvd(&gsi, gs_v2(10.f, 10.f), gs_v2(220.f, 70.f), gs_v2(0.f, 0.f), gs_v2(1.f, 1.f), gs_color(10, 50, 150, 255), GS_GRAPHICS_PRIMITIVE_TRIANGLES);
         gsi_rectvd(&gsi, gs_v2(10.f, 10.f), gs_v2(220.f, 70.f), gs_v2(0.f, 0.f), gs_v2(1.f, 1.f), gs_color(10, 50, 220, 255), GS_GRAPHICS_PRIMITIVE_LINES);
+        const char render_str[64];
+        float render= gs_platform_time()->render;
+        sprintf(render_str, "Render: %.2f", render);
+        const char delta_str[64];
+        float delta= gs_platform_time()->delta;
+        const char frame_str[64];
+        sprintf(delta_str, "Delta: %.2f", delta);
+        float frame= gs_platform_time()->frame;
+        sprintf(frame_str, "F: %.2f", frame);
         gsi_text(&gsi, 20.f, 25.f, "FPS Camera Controls:", NULL, false, 0, 0, 0, 255);
         gsi_text(&gsi, 40.f, 40.f, "- Move: W, A, S, D", NULL, false, 255, 255, 255, 255);
         gsi_text(&gsi, 40.f, 55.f, "- Mouse to look", NULL, false, 255, 255, 255, 255);
         gsi_text(&gsi, 40.f, 70.f, "- Shift to run", NULL, false, 255, 255, 255, 255);
+        gsi_text(&gsi, 40.f, 90.f, render_str, NULL, false, 255, 255, 255, 255);
+        gsi_text(&gsi, 40.f, 110.f, delta_str, NULL, false, 255, 255, 255, 255);
+        gsi_text(&gsi, 40.f, 130.f, frame_str, NULL, false, 255, 255, 255, 255);
 
     /* Render */
     //gsi_renderpass_submit(&gsi, &command_buffer, gs_v4(0.f, 0.f, fs.x, fs.y), gs_color(0,0,0,0));
