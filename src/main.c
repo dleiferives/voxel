@@ -7,6 +7,9 @@
 #define GS_IMPL
 #include "../include/gs/gs.h"
 
+#define GS_IMMEDIATE_DRAW_IMPL
+#include "../include/gs/util/gs_idraw.h"
+
 #ifdef GS_PLATFORM_WEB
     #define GS_GL_VERSION_STR "#version 300 es\n"
 #else
@@ -14,6 +17,8 @@
 #endif
 
 
+#define voxels 16384
+#define voxels_sub 128
 
 // FPS CAMERA //////////////////////////////////////////////////////////////////
 #define SENSITIVITY 0.1f
@@ -108,7 +113,7 @@ float v_cube[] = {
     0.982f,  0.099f,  0.879f
 };
 
-float g_translations[1204] = {0};
+float g_translations[voxels] = {0};
 
 const char* fragment_shader = 
         GS_GL_VERSION_STR 
@@ -131,8 +136,8 @@ const char* vertex_shader =
         "   mat4 view;\n"
         "};\n"
         "void main(){\n" // Note that the model position is the identity matrix for a mat4
-        "float x = float(gl_InstanceID % 32) * 2.0 - 16.0;\n"  // Modulo by 16 and scale
-        "float z = float(gl_InstanceID / 32) * 2.0 - 16.0;\n"  // Divide by 16 and scale
+        "float x = float(gl_InstanceID % 128) * 2.0 - (128.0 / 2.0);\n"  // Modulo by 16 and scale
+        "float z = float(gl_InstanceID / 128) * 2.0 - (128.0 / 2.0);\n"  // Divide by 16 and scale
         "float distance = sqrt(pow(x, 2.0) + pow(z, 2.0));\n"
         "vec3 pos = vec3(a_pos.x + x , (a_pos.y + a_offset), a_pos.z + z );\n"
         "   gl_Position = projection * view * mat4(1.0) *  vec4(pos, 1.0);\n"
@@ -148,6 +153,7 @@ gs_handle(gs_graphics_vertex_buffer_t)   vbo_cube = {0};
 gs_handle(gs_graphics_vertex_buffer_t)   vbo_color= {0};
 gs_handle(gs_graphics_uniform_buffer_t)         ub_vp = {0};
 gs_handle(gs_graphics_vertex_buffer_t)  inst_vbo = {0};
+gs_immediate_draw_t  gsi = {0};
 
 typedef struct v_viewproj_t{
         gs_mat4 projection;
@@ -167,15 +173,19 @@ void app_init(){
         // Set up our command buffer to submit to gpu
         command_buffer = gs_command_buffer_new();
 
+
+        // set up immediate mode gui
+        gsi = gs_immediate_draw_new(gs_platform_main_window());
+
         // Set up the camera
         fps.cam = gs_camera_perspective();
-        for(int i = 0; i < 1024; ++i) {
-            int x = i % 32 - 16; // x goes from -16 to 15
-            int z = i / 32 - 16; // z goes from -16 to 15
+        for(int i = 0; i < voxels; ++i) {
+            int x = i % voxels - (voxels_sub >> 1); // x goes from -16 to 15
+            int z = i / voxels - (voxels_sub >> 1); // z goes from -16 to 15
 
             // Gaussian parameters
             float mu_x = 0, mu_z = 0; // Center at (0,0) since we adjusted coordinates
-            float sigma_x = 4.0, sigma_z = 4.0; // Control the spread of the bell curve
+            float sigma_x = 16.0, sigma_z = 16.0; // Control the spread of the bell curve
             float a = 1.0; // Amplitude
 
             // Calculate Gaussian value
@@ -184,7 +194,7 @@ void app_init(){
             float gaussian = a * exp(exponent);
 
             // Store the result
-            g_translations[i] = gaussian * 10.0f;
+            g_translations[i] = gaussian * 100.0f;
         }
        
         // Set up instancing
@@ -320,6 +330,7 @@ void app_update(){
                 (gs_graphics_bind_vertex_buffer_desc_t){.buffer = vbo_cube, .offset = 36 * 3 * sizeof(float), .data_type=GS_GRAPHICS_VERTEX_DATA_NONINTERLEAVED},
                 {.buffer = inst_vbo}
         };
+
         // Render //
         gs_graphics_renderpass_begin(&command_buffer, GS_GRAPHICS_RENDER_PASS_DEFAULT);
                 gs_graphics_set_viewport(&command_buffer, 0,0, (uint32_t)fs.x, (uint32_t)fs.y );
@@ -347,10 +358,30 @@ void app_update(){
                                         // note count needs to be for the number of
                                         // vertexes, not the number of floats
                                         .count = 36 ,
-                                        .instances = 1024 
+                                        .instances = voxels 
                                  }
                 );
         gs_graphics_renderpass_end(&command_buffer);
+
+        // Draw text
+        gsi_defaults(&gsi);
+        gsi_camera2D(&gsi, fs.x, fs.y);
+        gsi_rectvd(&gsi, gs_v2(10.f, 10.f), gs_v2(220.f, 70.f), gs_v2(0.f, 0.f), gs_v2(1.f, 1.f), gs_color(10, 50, 150, 255), GS_GRAPHICS_PRIMITIVE_TRIANGLES);
+        gsi_rectvd(&gsi, gs_v2(10.f, 10.f), gs_v2(220.f, 70.f), gs_v2(0.f, 0.f), gs_v2(1.f, 1.f), gs_color(10, 50, 220, 255), GS_GRAPHICS_PRIMITIVE_LINES);
+        gsi_text(&gsi, 20.f, 25.f, "FPS Camera Controls:", NULL, false, 0, 0, 0, 255);
+        gsi_text(&gsi, 40.f, 40.f, "- Move: W, A, S, D", NULL, false, 255, 255, 255, 255);
+        gsi_text(&gsi, 40.f, 55.f, "- Mouse to look", NULL, false, 255, 255, 255, 255);
+        gsi_text(&gsi, 40.f, 70.f, "- Shift to run", NULL, false, 255, 255, 255, 255);
+
+    /* Render */
+    //gsi_renderpass_submit(&gsi, &command_buffer, gs_v4(0.f, 0.f, fs.x, fs.y), gs_color(0,0,0,0));
+        // Taken out of renderpass submit
+	gs_renderpass_t pass = gs_default_val();
+	gs_graphics_renderpass_begin(&command_buffer, pass);
+        gs_vec4 viewport = gs_v4(0.f, 0.f, fs.x, fs.y);
+	gs_graphics_set_viewport(&command_buffer, (uint32_t)viewport.x, (uint32_t)viewport.y, (uint32_t)viewport.z, (uint32_t)viewport.w);
+	gsi_draw(&gsi, &command_buffer);
+	gs_graphics_renderpass_end(&command_buffer);
 
         gs_graphics_command_buffer_submit(&command_buffer);
 }
