@@ -180,21 +180,7 @@ void app_init(){
         // Set up the camera
         fps.cam = gs_camera_perspective();
         for(int i = 0; i < voxels; ++i) {
-            int x = i % voxels - (voxels_sub >> 1); // x goes from -16 to 15
-            int z = i / voxels - (voxels_sub >> 1); // z goes from -16 to 15
-
-            // Gaussian parameters
-            float mu_x = 0, mu_z = 0; // Center at (0,0) since we adjusted coordinates
-            float sigma_x = 16.0, sigma_z = 16.0; // Control the spread of the bell curve
-            float a = 1.0; // Amplitude
-
-            // Calculate Gaussian value
-            float exponent = -((x - mu_x) * (x - mu_x) / (2 * sigma_x * sigma_x) +
-                               (z - mu_z) * (z - mu_z) / (2 * sigma_z * sigma_z));
-            float gaussian = a * exp(exponent);
-
-            // Store the result
-            g_translations[i] = gaussian * 100.0f;
+            g_translations[i] = ((float)i)/((float)voxels) * 100.0f;
         }
        
         // Set up instancing
