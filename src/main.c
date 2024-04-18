@@ -133,13 +133,13 @@ const char* vertex_shader =
         "layout (std140) uniform ub_vp {\n"
         "   mat4 projection;\n"
         "   mat4 view;\n"
+        "   float offset[16384];\n"
         "};\n"
-        "layout (std140, binding = 1) uniform ub_heights {\n"
         "void main(){\n" // Note that the model position is the identity matrix for a mat4
         "float x = float(gl_InstanceID % 128) * 2.0 - (128.0 / 2.0);\n"  // Modulo by 16 and scale
         "float z = float(gl_InstanceID / 128) * 2.0 - (128.0 / 2.0);\n"  // Divide by 16 and scale
         "float distance = sqrt(pow(x, 2.0) + pow(z, 2.0));\n"
-        "vec3 pos = vec3(a_pos.x + x , (a_pos.y + ub_heights), a_pos.z + z );\n"
+        "vec3 pos = vec3(a_pos.x + x , (a_pos.y + offset[gl_InstanceID]), a_pos.z + z );\n"
         "   gl_Position = projection * view * mat4(1.0) *  vec4(pos, 1.0);\n"
         "   f_color = a_color;\n"
         "}\n";
@@ -153,14 +153,13 @@ gs_handle(gs_graphics_vertex_buffer_t)   vbo_cube = {0};
 gs_handle(gs_graphics_vertex_buffer_t)   vbo_color= {0};
 gs_handle(gs_graphics_uniform_buffer_t)         ub_vp = {0};
 gs_handle(gs_graphics_vertex_buffer_t)  inst_vbo = {0};
-gs_handle(gs_graphics_uniform_buffer_t) ub_heights = {0};
 gs_immediate_draw_t  gsi = {0};
 float g_translations[voxels] = {0};
-float ub_heights_data[voxels] = {0};
 
 typedef struct v_viewproj_t{
         gs_mat4 projection;
         gs_mat4 view;
+        float offset[voxels];
 } v_viewproj_t;
 
 
@@ -183,7 +182,7 @@ void app_init(){
         // Set up the camera
         fps.cam = gs_camera_perspective();
         for(int i = 0; i < voxels; ++i) {
-            ub_heights_data[i] = ((float)i)/((float)voxels) * 100.0f;
+            g_translations[i] = ((float)i)/((float)voxels) * 100.0f;
         }
        
         // Set up instancing
@@ -212,14 +211,6 @@ void app_init(){
                 }
         );
 
-        // Create uniform for heights  
-        ub_vp = gs_graphics_uniform_buffer_create(
-                &(gs_graphics_uniform_buffer_desc_t){
-                        .data = NULL,
-                        .size = sizeof(v_viewproj_t),
-                        .name = "ub_heights"
-                }
-        );
         // set up uniform buffer for view projection
         gs_vec2 window_size = gs_platform_window_sizev(gs_platform_main_window());
         gs_mat4 projection = gs_camera_get_proj(
@@ -239,19 +230,6 @@ void app_init(){
                 &(gs_graphics_uniform_buffer_desc_t){
                         .data = &projection,
                         .size = sizeof(projection),
-                        .update = {
-                                .type = GS_GRAPHICS_BUFFER_UPDATE_SUBDATA,
-                                .offset = 0
-                        }
-                }
-        );
-
-        gs_graphics_uniform_buffer_request_update(
-                &command_buffer,
-                ub_heights,
-                &(gs_graphics_uniform_buffer_desc_t){
-                        .data = &ub_heights_data,
-                        .size = sizeof(ub_heights_data),
                         .update = {
                                 .type = GS_GRAPHICS_BUFFER_UPDATE_SUBDATA,
                                 .offset = 0
@@ -335,7 +313,7 @@ void app_update(){
 
         static int counter_offset;
         for(int i = 0; i < voxels; ++i) {
-            ub_heights_data[i] = ((float)(i+counter_offset))/((float)voxels) * 100.0f;
+            g_translations[i] = ((float)(i+counter_offset))/((float)voxels) * 100.0f;
         }
         if(counter_offset > voxels) counter_offset = 0;
         counter_offset++;
@@ -343,13 +321,13 @@ void app_update(){
         //update heights
         gs_graphics_uniform_buffer_request_update(
                 &command_buffer,
-                ub_heights,
+                ub_vp,
                 &(gs_graphics_uniform_buffer_desc_t){
-                        .data = &ub_heights_data,
-                        .size = sizeof(ub_heights_data),
+                        .data = &g_translations[0],
+                        .size = sizeof(g_translations),
                         .update = {
                                 .type = GS_GRAPHICS_BUFFER_UPDATE_SUBDATA,
-                                .offset = 0
+                                .offset =2 * sizeof(gs_mat4)
                         }
                 }
         );
@@ -363,9 +341,8 @@ void app_update(){
                 {.buffer = inst_vbo}
         };
 
-        gs_graphics_bind_uniform_buffer_desc_t ub_binds[2] = {
+        gs_graphics_bind_uniform_buffer_desc_t ub_binds[1] = {
                 { .buffer = ub_vp, .binding = 0 },
-                {.buffer = ub_heights, .binding = 1}
         };
 
         // Render //
