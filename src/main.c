@@ -292,20 +292,24 @@ void app_init(){
         //                 }
         // );
 
-		v_cube = malloc(sizeof(float) * 3 * 36);
+		v_cube = malloc(2 * sizeof(float) * 3 * 36);
 		// create cube
 		Cube_t cube = Cube_init(gs_v3(0, 0, 0));
+		Cube_t cube2 = Cube_init(gs_v3(2, 0, 0));
 		for(int i = 0; i < CUBE_T_VERTS; i++){
 			v_cube[i * 3 + 0] = Cube_vertices[i * 3 + 0] + cube.pos.x;
 			v_cube[i * 3 + 1] = Cube_vertices[i * 3 + 1] + cube.pos.y;
 			v_cube[i * 3 + 2] = Cube_vertices[i * 3 + 2] + cube.pos.z;
+			v_cube[(i + CUBE_T_VERTS) * 3 + 0] = Cube_vertices[i * 3 + 0] + cube2.pos.x;
+			v_cube[(i + CUBE_T_VERTS) * 3 + 1] = Cube_vertices[i * 3 + 1] + cube2.pos.y;
+			v_cube[(i + CUBE_T_VERTS) * 3 + 2] = Cube_vertices[i * 3 + 2] + cube2.pos.z;
 		}
 
         // Set up our vertex buffer 
         vbo_cube= gs_graphics_vertex_buffer_create(
                 &(gs_graphics_vertex_buffer_desc_t) {
                         .data = v_cube,
-                        .size = sizeof(float) * 3 * 36
+                        .size = 2 * sizeof(float) * 3 * 36
                 }
         );
 
@@ -457,7 +461,7 @@ void app_update(){
                                         .start = 0,
                                         // note count needs to be for the number of
                                         // vertexes, not the number of floats
-                                        .count =  36
+                                        .count =  2 * 36
 									 // .instances = voxels 
                                  }
                 );
