@@ -428,11 +428,11 @@ void app_update(){
                        
 		
         gs_graphics_bind_vertex_buffer_desc_t v_buffers[] = {
-                (gs_graphics_bind_vertex_buffer_desc_t){.buffer = vbo_cube, .offset = 0},
+				{.buffer = vbo_cubemap},
+                // (gs_graphics_bind_vertex_buffer_desc_t){.buffer = vbo_cube, .offset = 0},
                 // NOTE: the offset needs to be the index of the color data
                 // (gs_graphics_bind_vertex_buffer_desc_t){.buffer = vbo_cube, .offset = 36 * 3 * sizeof(float), .data_type=GS_GRAPHICS_VERTEX_DATA_NONINTERLEAVED},
                 // {.buffer = inst_vbo},
-				// {.buffer = vbo_cubemap},
         };
 
         // Render //
@@ -461,7 +461,7 @@ void app_update(){
                                         .start = 0,
                                         // note count needs to be for the number of
                                         // vertexes, not the number of floats
-                                        .count =  2 * 36
+                                        .count = cubemap->num_cubes * CUBE_T_VERTS,
 									 // .instances = voxels 
                                  }
                 );
