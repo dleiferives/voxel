@@ -136,12 +136,15 @@ const char* vertex_shader =
         "   mat4 projection;\n"
         "   mat4 view;\n"
         "};\n"
+		"float random(float seed) {\n"
+		"	return fract(sin(seed) * 43758.5453123);\n"
+		"}\n"
         "void main(){\n" // Note that the model position is the identity matrix for a mat4
         // "float x = float(gl_InstanceID % 128) * 2.0 - (128.0 / 2.0);\n"  // Modulo by 16 and scale
         // "float z = float(gl_InstanceID / 128) * 2.0 - (128.0 / 2.0);\n"  // Divide by 16 and scale
         // "float distance = sqrt(pow(x, 2.0) + pow(z, 2.0));\n"
         // "vec3 pos = vec3(a_pos.x + x , (a_pos.y + a_offset), a_pos.z + z );\n"
-					" float index = float(gl_VertexID)/ (36.0*100.0*100.0);\n"
+					" float index = random(float(gl_VertexID));\n"
         "   gl_Position = projection * view * mat4(1.0) *  vec4(a_pos, 1.0);\n"
         "   f_color = vec3(index,1.0 - index,index * 0.5);\n"
         "}\n";
