@@ -273,7 +273,7 @@ CubeMap_t *CubeMap_create_perlin_field(int width, int depth) {
 	CubeMap_t *cubemap = CubeMap_create_big_box(1,width,depth);
 	for(int i = 0; i < width; i++){
 		for(int j = 0; j < depth; j++){
-			float y = pnoise2d(i,j,0.75, 5, 112313)* 3.0;
+			float y = pnoise2d(i,j,2.75, 5, 112313)* 3.0;
 			cubemap->cubes[i * width + j] = Cube_init(gs_v3(2*i, 2*y, 2*j));
 		}
 	}
