@@ -141,7 +141,7 @@ const char* vertex_shader =
         // "float z = float(gl_InstanceID / 128) * 2.0 - (128.0 / 2.0);\n"  // Divide by 16 and scale
         // "float distance = sqrt(pow(x, 2.0) + pow(z, 2.0));\n"
         // "vec3 pos = vec3(a_pos.x + x , (a_pos.y + a_offset), a_pos.z + z );\n"
-					" float index = float(gl_VertexID)/ 36.0;\n"
+					" float index = float(gl_VertexID)/ (36.0*20.0*20.0);\n"
         "   gl_Position = projection * view * mat4(1.0) *  vec4(a_pos, 1.0);\n"
         "   f_color = vec3(index,1.0 - index,index * 0.5);\n"
         "}\n";
@@ -233,19 +233,21 @@ float *Cube_mesh_many(CubeMap_t cubemap){
 }
 
 CubeMap_t *Cube_create_3d_sin_of_n(int radius, float height_scalar){
-	// figure out how many cubes we need, since each cube is 2x2x2 
-	int num_cubes = (radius * 2) * (radius * 2);
-	CubeMap_t *cubemap = (CubeMap_t *)malloc(sizeof(CubeMap_t));
-	cubemap->num_cubes = num_cubes;
-	float offset_x = (float) radius;
-	float offset_z = (float) radius;
-	cubemap->cubes = (Cube_t *)malloc(num_cubes * sizeof(Cube_t));
-	for(int i = 0; i < radius * 2; i++){
-		for(int j = 0; j < radius * 2; j++){
-			cubemap->cubes[(i * radius * 2) + j] = Cube_init(gs_v3(i - offset_x, sin(i) * height_scalar, j - offset_z));
-		}
-	}
-	return cubemap;
+    // figure out how many cubes we need, since each cube is 2x2x2 
+    int num_cubes = (radius * 2) * (radius * 2);
+    CubeMap_t *cubemap = (CubeMap_t *)malloc(sizeof(CubeMap_t));
+    cubemap->num_cubes = num_cubes;
+    float offset_x = (float)radius;
+    float offset_z = (float)radius;
+    cubemap->cubes = (Cube_t *)malloc(num_cubes * sizeof(Cube_t));
+    for(int i = 0; i < radius * 2; i++){
+        for(int j = 0; j < radius * 2; j++){
+            // Calculate the y-coordinate using sine function scaled by height_scalar
+            float y = sin((i - offset_x + j - offset_z) * 1.0);
+            cubemap->cubes[(i * radius * 2) + j] = Cube_init(gs_v3(i - offset_x, y, j - offset_z));
+        }
+    }
+    return cubemap;
 }
 
 GS_API_DECL gs_handle(gs_graphics_vertex_buffer_t) 
