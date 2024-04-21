@@ -137,7 +137,7 @@ const char* vertex_shader =
         "   mat4 view;\n"
         "};\n"
 		"float random(float seed) {\n"
-		"	return fract(sin(seed) * 43758.5453123);\n"
+		"	return fract(sin(seed + a_pos.x + a_pos.y + a_pos.z) * 43758.5453123);\n"
 		"}\n"
         "void main(){\n" // Note that the model position is the identity matrix for a mat4
         // "float x = float(gl_InstanceID % 128) * 2.0 - (128.0 / 2.0);\n"  // Modulo by 16 and scale
@@ -235,7 +235,7 @@ float *Cube_mesh_many(CubeMap_t cubemap){
 	return vertices;
 }
 
-CubeMap_t *Cube_create_3d_sin_of_n(int radius, float height_scalar){
+CubeMap_t *CubeMap_create_3d_sin_of_n(int radius, float height_scalar){
     // figure out how many cubes we need, since each cube is 2x2x2 
     int num_cubes = (radius * 2) * (radius * 2);
     CubeMap_t *cubemap = (CubeMap_t *)malloc(sizeof(CubeMap_t));
@@ -251,6 +251,21 @@ CubeMap_t *Cube_create_3d_sin_of_n(int radius, float height_scalar){
         }
     }
     return cubemap;
+}
+
+CubeMap_t *CubeMap_create_big_box(int height, int width, int depth) {
+	int num_cubes = height * width * depth;
+	CubeMap_t *cubemap = (CubeMap_t *)malloc(sizeof(CubeMap_t));
+	cubemap->num_cubes = num_cubes;
+	cubemap->cubes = (Cube_t *)malloc(num_cubes * sizeof(Cube_t));
+	for(int i = 0; i < height; i++){
+		for(int j = 0; j < width; j++){
+			for(int k = 0; k < depth; k++){
+				cubemap->cubes[(i * width * depth) + j * depth + k] = Cube_init(gs_v3(2*i, 2*j, 2*k));
+			}
+		}
+	}
+	return cubemap;
 }
 
 GS_API_DECL gs_handle(gs_graphics_vertex_buffer_t) 
@@ -387,7 +402,7 @@ void app_init(){
                 }
         );
 		
-		cubemap =  Cube_create_3d_sin_of_n(50, 1.0f);
+		cubemap =  CubeMap_create_big_box(500, 3, 500);
 		vbo_cubemap = CubeMap_to_vbo(cubemap);
 
 }
