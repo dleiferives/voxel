@@ -141,7 +141,7 @@ const char* vertex_shader =
         // "float z = float(gl_InstanceID / 128) * 2.0 - (128.0 / 2.0);\n"  // Divide by 16 and scale
         // "float distance = sqrt(pow(x, 2.0) + pow(z, 2.0));\n"
         // "vec3 pos = vec3(a_pos.x + x , (a_pos.y + a_offset), a_pos.z + z );\n"
-					" float index = float(gl_VertexID)/ (36.0*20.0*20.0);\n"
+					" float index = float(gl_VertexID)/ (36.0*100.0*100.0);\n"
         "   gl_Position = projection * view * mat4(1.0) *  vec4(a_pos, 1.0);\n"
         "   f_color = vec3(index,1.0 - index,index * 0.5);\n"
         "}\n";
@@ -243,8 +243,8 @@ CubeMap_t *Cube_create_3d_sin_of_n(int radius, float height_scalar){
     for(int i = 0; i < radius * 2; i++){
         for(int j = 0; j < radius * 2; j++){
             // Calculate the y-coordinate using sine function scaled by height_scalar
-            float y = sin((i - offset_x + j - offset_z) * 1.0);
-            cubemap->cubes[(i * radius * 2) + j] = Cube_init(gs_v3(i - offset_x, y, j - offset_z));
+            float y = sin((i - offset_x + j - offset_z))*height_scalar;
+            cubemap->cubes[(i * radius * 2) + j] = Cube_init(gs_v3(2*(i - offset_x), 2*y, 2*(j - offset_z)));
         }
     }
     return cubemap;
@@ -384,7 +384,7 @@ void app_init(){
                 }
         );
 		
-		cubemap =  Cube_create_3d_sin_of_n(10, 10.0f);
+		cubemap =  Cube_create_3d_sin_of_n(50, 1.0f);
 		vbo_cubemap = CubeMap_to_vbo(cubemap);
 
 }
