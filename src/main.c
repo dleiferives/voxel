@@ -273,7 +273,7 @@ CubeMap_t *CubeMap_create_perlin_field(int width, int depth) {
 	CubeMap_t *cubemap = CubeMap_create_big_box(1,width,depth);
 	for(int i = 0; i < width; i++){
 		for(int j = 0; j < depth; j++){
-			float y = pnoise2d(i,j,2.75, 5, 112313)* 3.0;
+			float y = pnoise3d(i,j,0.5,1, 20, 112313);
 			cubemap->cubes[i * width + j] = Cube_init(gs_v3(2*i, 2*y, 2*j));
 		}
 	}
@@ -291,6 +291,15 @@ CubeMap_to_vbo(CubeMap_t *cubemap){
 	);
 }
 
+CubeMap_t *CubeMap_update_perlin_field(CubeMap_t *cm, int width,int depth,int octaves, double persistance, int z){
+	for(int i = 0; i < width; i++){
+		for(int j = 0; j < depth; j++){
+			float y = pnoise3d(i,j,z,persistance, octaves, 112313);
+			cm->cubes[i * width + j] = Cube_init(gs_v3(2*i, 2*y, 2*j));
+		}
+	}
+	return cm;
+}
 
 
 
@@ -324,26 +333,26 @@ void app_init(){
         //                 }
         // );
 
-		v_cube = malloc(2 * sizeof(float) * 3 * 36);
-		// create cube
-		Cube_t cube = Cube_init(gs_v3(0, 0, 0));
-		Cube_t cube2 = Cube_init(gs_v3(2, 0, 0));
-		for(int i = 0; i < CUBE_T_VERTS; i++){
-			v_cube[i * 3 + 0] = Cube_vertices[i * 3 + 0] + cube.pos.x;
-			v_cube[i * 3 + 1] = Cube_vertices[i * 3 + 1] + cube.pos.y;
-			v_cube[i * 3 + 2] = Cube_vertices[i * 3 + 2] + cube.pos.z;
-			v_cube[(i + CUBE_T_VERTS) * 3 + 0] = Cube_vertices[i * 3 + 0] + cube2.pos.x;
-			v_cube[(i + CUBE_T_VERTS) * 3 + 1] = Cube_vertices[i * 3 + 1] + cube2.pos.y;
-			v_cube[(i + CUBE_T_VERTS) * 3 + 2] = Cube_vertices[i * 3 + 2] + cube2.pos.z;
-		}
+		// v_cube = malloc(2 * sizeof(float) * 3 * 36);
+		// // create cube
+		// Cube_t cube = Cube_init(gs_v3(0, 0, 0));
+		// Cube_t cube2 = Cube_init(gs_v3(2, 0, 0));
+		// for(int i = 0; i < CUBE_T_VERTS; i++){
+		// 	v_cube[i * 3 + 0] = Cube_vertices[i * 3 + 0] + cube.pos.x;
+		// 	v_cube[i * 3 + 1] = Cube_vertices[i * 3 + 1] + cube.pos.y;
+		// 	v_cube[i * 3 + 2] = Cube_vertices[i * 3 + 2] + cube.pos.z;
+		// 	v_cube[(i + CUBE_T_VERTS) * 3 + 0] = Cube_vertices[i * 3 + 0] + cube2.pos.x;
+		// 	v_cube[(i + CUBE_T_VERTS) * 3 + 1] = Cube_vertices[i * 3 + 1] + cube2.pos.y;
+		// 	v_cube[(i + CUBE_T_VERTS) * 3 + 2] = Cube_vertices[i * 3 + 2] + cube2.pos.z;
+		// }
 
         // Set up our vertex buffer 
-        vbo_cube= gs_graphics_vertex_buffer_create(
-                &(gs_graphics_vertex_buffer_desc_t) {
-                        .data = v_cube,
-                        .size = 2 * sizeof(float) * 3 * 36
-                }
-        );
+        // vbo_cube= gs_graphics_vertex_buffer_create(
+        //         &(gs_graphics_vertex_buffer_desc_t) {
+        //                 .data = v_cube,
+        //                 .size = 2 * sizeof(float) * 3 * 36
+        //         }
+        // );
 
         // Create uniform buffer
         ub_vp = gs_graphics_uniform_buffer_create(
@@ -415,7 +424,6 @@ void app_init(){
         );
 		
 		cubemap = CubeMap_create_perlin_field(128, 128);
-		vbo_cubemap = CubeMap_to_vbo(cubemap);
 
 }
 
@@ -423,6 +431,7 @@ void app_update(){
         if (gs_platform_key_pressed(GS_KEYCODE_ESC)) gs_quit();
         // Set up the fram buffer size
         gs_vec2 fs = gs_platform_framebuffer_sizev(gs_platform_main_window());
+
 
         // clear the screen 
         gs_graphics_clear_desc_t clear = {.actions = &(gs_graphics_clear_action_t){.color = {0.2f, 0.2f, 0.2f, 1.f}}};
@@ -457,6 +466,9 @@ void app_update(){
 
 
         static int counter;
+		counter++;
+		CubeMap_update_perlin_field(cubemap, 128, 128, 5, 0.5, counter);
+		vbo_cubemap = CubeMap_to_vbo(cubemap);
                        
 		
         gs_graphics_bind_vertex_buffer_desc_t v_buffers[] = {
@@ -536,6 +548,7 @@ void app_update(){
 	gs_graphics_renderpass_end(&command_buffer);
 
         gs_graphics_command_buffer_submit(&command_buffer);
+	gs_graphics_vertex_buffer_destroy(vbo_cubemap);
 }
 
 
