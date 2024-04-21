@@ -6,6 +6,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 #define GS_IMPL
 #include "../include/gs/gs.h"
+#include "../include/perlin/perlin.h"
 
 #define GS_IMMEDIATE_DRAW_IMPL
 #include "../include/gs/util/gs_idraw.h"
@@ -253,16 +254,27 @@ CubeMap_t *CubeMap_create_3d_sin_of_n(int radius, float height_scalar){
     return cubemap;
 }
 
-CubeMap_t *CubeMap_create_big_box(int height, int width, int depth) {
+CubeMap_t *CubeMap_create_big_box( int width, int height, int depth) {
 	int num_cubes = height * width * depth;
 	CubeMap_t *cubemap = (CubeMap_t *)malloc(sizeof(CubeMap_t));
 	cubemap->num_cubes = num_cubes;
 	cubemap->cubes = (Cube_t *)malloc(num_cubes * sizeof(Cube_t));
-	for(int i = 0; i < height; i++){
-		for(int j = 0; j < width; j++){
+	for(int i = 0; i < width; i++){
+		for(int j = 0; j < height; j++){
 			for(int k = 0; k < depth; k++){
-				cubemap->cubes[(i * width * depth) + j * depth + k] = Cube_init(gs_v3(2*i, 2*j, 2*k));
+				cubemap->cubes[(i * height * depth) + j * depth + k] = Cube_init(gs_v3(2*i, 2*j, 2*k));
 			}
+		}
+	}
+	return cubemap;
+}
+
+CubeMap_t *CubeMap_create_perlin_field(int width, int depth) {
+	CubeMap_t *cubemap = CubeMap_create_big_box(1,width,depth);
+	for(int i = 0; i < width; i++){
+		for(int j = 0; j < depth; j++){
+			float y = pnoise2d(i,j,0.75, 5, 112313)* 3.0;
+			cubemap->cubes[i * width + j] = Cube_init(gs_v3(2*i, 2*y, 2*j));
 		}
 	}
 	return cubemap;
@@ -402,7 +414,7 @@ void app_init(){
                 }
         );
 		
-		cubemap =  CubeMap_create_big_box(500, 3, 500);
+		cubemap = CubeMap_create_perlin_field(128, 128);
 		vbo_cubemap = CubeMap_to_vbo(cubemap);
 
 }

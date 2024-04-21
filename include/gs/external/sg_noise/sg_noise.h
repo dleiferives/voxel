@@ -190,7 +190,8 @@ float sg_noise1( float x )
 
     n0 = sg_grad1( SG_PERM[ ix0 ], fx0 );
     n1 = sg_grad1( SG_PERM[ ix1 ], fx1 );
-    return 0.188f * ( SG_LERP( s, n0, n1 ) );
+    float res = 0.188f * ( SG_LERP( s, n0, n1 ) );
+	return res;
 }
 
 //---------------------------------------------------------------------
@@ -553,6 +554,7 @@ float sg_pnoise4( float x, float y, float z, float w,
     nxyz0 = sg_grad4(SG_PERM[ix1 + SG_PERM[iy1 + SG_PERM[iz1 + SG_PERM[iw0]]]], fx1, fy1, fz1, fw0);
     nxyz1 = sg_grad4(SG_PERM[ix1 + SG_PERM[iy1 + SG_PERM[iz1 + SG_PERM[iw1]]]], fx1, fy1, fz1, fw1);
     nxy1 = SG_LERP( q, nxyz0, nxyz1 );
+
 
     nx1 = SG_LERP ( r, nxy0, nxy1 );
 

@@ -11,7 +11,7 @@ rem Include directories
 set inc=/I ..\include\
 
 rem Source files
-set src_main= ..\src\main.c 
+set src_main= ..\src\main.c ..\include\perlin\perlin.c
 
 
 rem All source together
