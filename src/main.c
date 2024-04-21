@@ -501,6 +501,9 @@ void app_update(){
         sprintf(delta_str, "Delta: %.2f", delta);
         float frame= gs_platform_time()->frame;
         sprintf(frame_str, "F: %.2f", frame);
+        const char vert_str[64];
+        float vert_num= cubemap->num_cubes * CUBE_T_VERTS;
+        sprintf(vert_str, "Vertexes: %.2f", vert_num);
         gsi_text(&gsi, 20.f, 25.f, "FPS Camera Controls:", NULL, false, 0, 0, 0, 255);
         gsi_text(&gsi, 40.f, 40.f, "- Move: W, A, S, D", NULL, false, 255, 255, 255, 255);
         gsi_text(&gsi, 40.f, 55.f, "- Mouse to look", NULL, false, 255, 255, 255, 255);
@@ -508,6 +511,7 @@ void app_update(){
         gsi_text(&gsi, 40.f, 90.f, render_str, NULL, false, 255, 255, 255, 255);
         gsi_text(&gsi, 40.f, 110.f, delta_str, NULL, false, 255, 255, 255, 255);
         gsi_text(&gsi, 40.f, 130.f, frame_str, NULL, false, 255, 255, 255, 255);
+        gsi_text(&gsi, 40.f, 150.f, vert_str, NULL, false, 255, 255, 255, 255);
 
     /* Render */
     //gsi_renderpass_submit(&gsi, &command_buffer, gs_v4(0.f, 0.f, fs.x, fs.y), gs_color(0,0,0,0));
