@@ -2406,6 +2406,9 @@ EM_BOOL gs_ems_mouse_cb(int32_t type, const EmscriptenMouseEvent* evt, void* use
         case 2: button = GS_MOUSE_RBUTTON; break;
     }
 
+	if(evt == NULL)
+		return false;
+
     // Push back event into platform events
     gs_platform_event_t gs_evt = gs_default_val();
     gs_evt.type = GS_PLATFORM_EVENT_MOUSE;

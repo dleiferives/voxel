@@ -1,7 +1,7 @@
 @echo off
-rmdir /Q /S bin
-mkdir bin
-pushd bin
+rmdir /Q /S bin_win
+mkdir bin_win
+pushd bin_win
 
 rem Name
 set name=Voxel

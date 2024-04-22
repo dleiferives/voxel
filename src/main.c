@@ -291,10 +291,10 @@ CubeMap_to_vbo(CubeMap_t *cubemap){
 	);
 }
 
-CubeMap_t *CubeMap_update_perlin_field(CubeMap_t *cm, int width,int depth,int octaves, double persistance, int z){
+CubeMap_t *CubeMap_update_perlin_field(CubeMap_t *cm, int width,int depth,int octaves, double persistance, int z, int scalar, float zoom){
 	for(int i = 0; i < width; i++){
 		for(int j = 0; j < depth; j++){
-			float y = pnoise3d(i,j,z,persistance, octaves, 112313);
+			float y = pnoise3d(i*zoom,j*zoom,z,persistance, octaves, 112313) * scalar;
 			cm->cubes[i * width + j] = Cube_init(gs_v3(2*i, 2*y, 2*j));
 		}
 	}
@@ -422,8 +422,6 @@ void app_init(){
                         
                 }
         );
-		
-		cubemap = CubeMap_create_perlin_field(128, 128);
 
 }
 
@@ -467,7 +465,8 @@ void app_update(){
 
         static int counter;
 		counter++;
-		CubeMap_update_perlin_field(cubemap, 128, 128, 5, 0.5, counter);
+		cubemap = CubeMap_create_perlin_field(128, 128);
+		CubeMap_update_perlin_field(cubemap, 128, 128, 5, 0.5, counter>>8,5,0.1);
 		vbo_cubemap = CubeMap_to_vbo(cubemap);
                        
 		
@@ -549,6 +548,9 @@ void app_update(){
 
         gs_graphics_command_buffer_submit(&command_buffer);
 	gs_graphics_vertex_buffer_destroy(vbo_cubemap);
+	free(cubemap->cubes);
+	free(cubemap);
+	cubemap=NULL;
 }
 
 
