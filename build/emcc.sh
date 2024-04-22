@@ -19,6 +19,7 @@ inc=(
 # Source files
 src=(
     ../src/main.c
+	../include/perlin/perlin.c
 )
 
 libs=(
