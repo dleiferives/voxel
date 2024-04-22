@@ -170,42 +170,42 @@ typedef struct v_viewproj_t{
 
 
 float Cube_vertices[] = {
-    -1.0f,-1.0f,-1.0f, // triangle 1 : begin
-    -1.0f,-1.0f, 1.0f,
-    -1.0f, 1.0f, 1.0f, // triangle 1 : end
-    1.0f, 1.0f,-1.0f, // triangle 2 : begin
-    -1.0f,-1.0f,-1.0f,
-    -1.0f, 1.0f,-1.0f, // triangle 2 : end
-    1.0f,-1.0f, 1.0f,
-    -1.0f,-1.0f,-1.0f,
-    1.0f,-1.0f,-1.0f,
-    1.0f, 1.0f,-1.0f,
-    1.0f,-1.0f,-1.0f,
-    -1.0f,-1.0f,-1.0f,
-    -1.0f,-1.0f,-1.0f,
-    -1.0f, 1.0f, 1.0f,
-    -1.0f, 1.0f,-1.0f,
-    1.0f,-1.0f, 1.0f,
-    -1.0f,-1.0f, 1.0f,
-    -1.0f,-1.0f,-1.0f,
-    -1.0f, 1.0f, 1.0f,
-    -1.0f,-1.0f, 1.0f,
-    1.0f,-1.0f, 1.0f,
+     0.0f, 0.0f, 0.0f, // triangle 1 : begin
+     0.0f, 0.0f, 1.0f,
+     0.0f, 1.0f, 1.0f, // triangle 1 : end
+    1.0f, 1.0f, 0.0f, // triangle 2 : begin
+     0.0f, 0.0f, 0.0f,
+     0.0f, 1.0f, 0.0f, // triangle 2 : end
+    1.0f, 0.0f, 1.0f,
+     0.0f, 0.0f, 0.0f,
+    1.0f, 0.0f, 0.0f,
+    1.0f, 1.0f, 0.0f,
+    1.0f, 0.0f, 0.0f,
+     0.0f, 0.0f, 0.0f,
+     0.0f, 0.0f, 0.0f,
+     0.0f, 1.0f, 1.0f,
+     0.0f, 1.0f, 0.0f,
+    1.0f, 0.0f, 1.0f,
+     0.0f, 0.0f, 1.0f,
+     0.0f, 0.0f, 0.0f,
+     0.0f, 1.0f, 1.0f,
+     0.0f, 0.0f, 1.0f,
+    1.0f, 0.0f, 1.0f,
     1.0f, 1.0f, 1.0f,
-    1.0f,-1.0f,-1.0f,
-    1.0f, 1.0f,-1.0f,
-    1.0f,-1.0f,-1.0f,
+    1.0f, 0.0f, 0.0f,
+    1.0f, 1.0f, 0.0f,
+    1.0f, 0.0f, 0.0f,
     1.0f, 1.0f, 1.0f,
-    1.0f,-1.0f, 1.0f,
+    1.0f, 0.0f, 1.0f,
     1.0f, 1.0f, 1.0f,
-    1.0f, 1.0f,-1.0f,
-    -1.0f, 1.0f,-1.0f,
+    1.0f, 1.0f, 0.0f,
+     0.0f, 1.0f, 0.0f,
     1.0f, 1.0f, 1.0f,
-    -1.0f, 1.0f,-1.0f,
-    -1.0f, 1.0f, 1.0f,
+     0.0f, 1.0f, 0.0f,
+     0.0f, 1.0f, 1.0f,
     1.0f, 1.0f, 1.0f,
-    -1.0f, 1.0f, 1.0f,
-    1.0f,-1.0f, 1.0f,
+     0.0f, 1.0f, 1.0f,
+    1.0f, 0.0f, 1.0f,
 };
 
 typedef struct {
@@ -223,6 +223,7 @@ CubeMap_t *cubemap = NULL;
 Cube_t Cube_init(gs_vec3 pos) {
 	return (Cube_t){pos, CUBE_T_VERTS};
 }
+float *g_verts; 
 
 float *Cube_mesh_many(CubeMap_t cubemap){
 	float *vertices = (float *)malloc(cubemap.num_cubes * CUBE_T_VERTS * 3 * sizeof(float));
@@ -234,6 +235,17 @@ float *Cube_mesh_many(CubeMap_t cubemap){
 		}
 	}
 	return vertices;
+}
+
+float *CubeMap_remesh(CubeMap_t *cubemap, float *verts){
+	for(int i = 0; i < cubemap->num_cubes; i++){
+		for(int j = 0; j < CUBE_T_VERTS; j++){
+			verts[(i * CUBE_T_VERTS * 3) + j * 3 + 0] = Cube_vertices[j * 3 + 0] + cubemap->cubes[i].pos.x;
+			verts[i * CUBE_T_VERTS * 3 + j * 3 + 1] = Cube_vertices[j * 3 + 1] + cubemap->cubes[i].pos.y;
+			verts[i * CUBE_T_VERTS * 3 + j * 3 + 2] = Cube_vertices[j * 3 + 2] + cubemap->cubes[i].pos.z;
+		}
+	}
+	return verts;
 }
 
 CubeMap_t *CubeMap_create_3d_sin_of_n(int radius, float height_scalar){
@@ -248,7 +260,7 @@ CubeMap_t *CubeMap_create_3d_sin_of_n(int radius, float height_scalar){
         for(int j = 0; j < radius * 2; j++){
             // Calculate the y-coordinate using sine function scaled by height_scalar
             float y = sin((i - offset_x + j - offset_z))*height_scalar;
-            cubemap->cubes[(i * radius * 2) + j] = Cube_init(gs_v3(2*(i - offset_x), 2*y, 2*(j - offset_z)));
+            cubemap->cubes[(i * radius * 2) + j] = Cube_init(gs_v3((i - offset_x), y, (j - offset_z)));
         }
     }
     return cubemap;
@@ -262,7 +274,7 @@ CubeMap_t *CubeMap_create_big_box( int width, int height, int depth) {
 	for(int i = 0; i < width; i++){
 		for(int j = 0; j < height; j++){
 			for(int k = 0; k < depth; k++){
-				cubemap->cubes[(i * height * depth) + j * depth + k] = Cube_init(gs_v3(2*i, 2*j, 2*k));
+				cubemap->cubes[(i * height * depth) + j * depth + k] = Cube_init(gs_v3(i, j, k));
 			}
 		}
 	}
@@ -274,18 +286,17 @@ CubeMap_t *CubeMap_create_perlin_field(int width, int depth) {
 	for(int i = 0; i < width; i++){
 		for(int j = 0; j < depth; j++){
 			float y = pnoise3d(i,j,0.5,1, 20, 112313);
-			cubemap->cubes[i * width + j] = Cube_init(gs_v3(2*i, 2*y, 2*j));
+			cubemap->cubes[i * width + j] = Cube_init(gs_v3(i, y,j));
 		}
 	}
 	return cubemap;
 }
 
 GS_API_DECL gs_handle(gs_graphics_vertex_buffer_t) 
-CubeMap_to_vbo(CubeMap_t *cubemap){
-	float *vertices = Cube_mesh_many(*cubemap);
+CubeMap_to_vbo(CubeMap_t *cubemap, float* verts){
 	return gs_graphics_vertex_buffer_create(
 		&(gs_graphics_vertex_buffer_desc_t){
-			.data = vertices,
+			.data = verts,
 			.size = cubemap->num_cubes * CUBE_T_VERTS * 3 * sizeof(float)
 		}
 	);
@@ -295,11 +306,14 @@ CubeMap_t *CubeMap_update_perlin_field(CubeMap_t *cm, int width,int depth,int oc
 	for(int i = 0; i < width; i++){
 		for(int j = 0; j < depth; j++){
 			float y = pnoise3d(i*zoom,j*zoom,z,persistance, octaves, 112313) * scalar;
-			cm->cubes[i * width + j] = Cube_init(gs_v3(2*i, 2*y, 2*j));
+			// floor y to nearest integer
+			y = floor(y);
+			cm->cubes[i * width + j] = Cube_init(gs_v3(i,y, j));
 		}
 	}
 	return cm;
 }
+
 
 
 
@@ -422,6 +436,8 @@ void app_init(){
                         
                 }
         );
+	cubemap = CubeMap_create_perlin_field(200, 200);
+	g_verts = Cube_mesh_many(*cubemap);
 
 }
 
@@ -465,9 +481,9 @@ void app_update(){
 
         static int counter;
 		counter++;
-		cubemap = CubeMap_create_perlin_field(128, 128);
-		CubeMap_update_perlin_field(cubemap, 128, 128, 5, 0.5, counter>>8,5,0.1);
-		vbo_cubemap = CubeMap_to_vbo(cubemap);
+		CubeMap_update_perlin_field(cubemap, 200, 200, 5, 0.5, counter>>8,5,0.1);
+		vbo_cubemap = CubeMap_to_vbo(cubemap, g_verts);
+		g_verts = CubeMap_remesh(cubemap, g_verts);
                        
 		
         gs_graphics_bind_vertex_buffer_desc_t v_buffers[] = {
@@ -548,9 +564,9 @@ void app_update(){
 
         gs_graphics_command_buffer_submit(&command_buffer);
 	gs_graphics_vertex_buffer_destroy(vbo_cubemap);
-	free(cubemap->cubes);
-	free(cubemap);
-	cubemap=NULL;
+	// free(cubemap->cubes);
+	// free(cubemap);
+	// cubemap=NULL;
 }
 
 
