@@ -28,13 +28,29 @@ GS_GL_VERSION_STR
 "	mat4 projection;\n"
 "	mat4 view;\n"
 "};\n"
-"float random(float seed) {\n"
-"	return fract(sin(seed + a_pos.x + a_pos.y + a_pos.z) * 43758.5453123);\n"
-"}\n"
 "void main(){ // Note that the model position is the identity matrix for a mat4\n"
-"	float index = random(float(gl_VertexID));\n"
 "	gl_Position = projection * view * mat4(1.0) *  vec4(a_pos, 1.0);\n"
-"	f_color = vec3(index,1.0 - index,index * 0.5);\n"
+"int faceIndex = gl_VertexID / 6;"  // Determine which set of six vertices (face) the current vertex belongs to
+"switch(faceIndex % 6) {"  // There are six faces on a cube
+"case 0:"
+"f_color = vec3(1.0, 0.0, 0.0);" // Red
+"break;"
+"case 1:"
+"f_color = vec3(0.0, 1.0, 0.0);" // Green
+"break;"
+"case 2:"
+"f_color = vec3(0.0, 0.0, 1.0);" // Blue
+"break;"
+"case 3:"
+"f_color = vec3(1.0, 1.0, 0.0);" // Yellow
+"break;"
+"case 4:"
+"f_color = vec3(0.0, 1.0, 1.0);" // Cyan
+"break;"
+"case 5:"
+"f_color = vec3(1.0, 0.0, 1.0);" // Magenta
+"break;"
+"}"
 "}";
 
 char * fragment_shader = 
