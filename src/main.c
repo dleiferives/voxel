@@ -29,7 +29,7 @@ GS_GL_VERSION_STR
 "	mat4 view;\n"
 "};\n"
 "void main(){ // Note that the model position is the identity matrix for a mat4\n"
-"	gl_Position = projection * view * mat4(1.0) *  vec4(a_pos, 1.0);\n"
+"	gl_Position = (projection * (view * (mat4(1.0) * vec4(a_pos, 1.0))));\n"
 "int faceIndex = gl_VertexID / 6;"  // Determine which set of six vertices (face) the current vertex belongs to
 "switch(faceIndex % 6) {"  // There are six faces on a cube
 "case 0:"
@@ -57,9 +57,10 @@ char * fragment_shader =
 	GS_GL_VERSION_STR 
 "precision mediump float;\n"
 "in vec3 f_color;\n"
-"out vec3 color;\n"
+"out vec4 color;\n"
 "void main(){\n"
-"	   color = f_color;\n"
+	// NOTE: using vec4 so that it works on both es and core
+"	   color = vec4(f_color,1.0);\n"
 "}\n";
 
 err_t Program_load_shaders(Program_t *program){
