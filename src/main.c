@@ -280,7 +280,7 @@ void app_init(){
 
 		}
 	);
-	program.cube_map = CubeMap_create_big_box(20, 20, 20);
+	program.cube_map = CubeMap_create_big_box(50, 20, 50);
 	g_verts = Cube_mesh_many(*(program.cube_map));
 
 }
@@ -325,7 +325,7 @@ void app_update(){
 	static int counter;
 	counter++;
 	int z = counter>>4;
-	CubeMap_update_perlin_3d(program.cube_map, 20, 20,20, 5, 0.5, 10,z,0,5,0.1);
+	CubeMap_update_perlin_3d(program.cube_map, 50, 20,50, 5, 0.5, 10,10,z,5,0.1);
 	program.vbo_cubemap = CubeMap_to_vbo(program.cube_map, g_verts);
 	g_verts = CubeMap_remesh(program.cube_map, g_verts);
 
