@@ -159,7 +159,7 @@ CubeMap_t *CubeMap_update_perlin_3d(CubeMap_t *cm, int width,int height, int dep
 	for(int i = 0; i < width; i++){
 		for(int j = 0; j < height; j++){
 			for(int k = 0; k < depth; k++){
-				float _y = pnoise3d(x+i*zoom,y+j*zoom,z+k*zoom,persistance, octaves, 112313) * scalar;
+				float _y = pnoise3d((x+i)*zoom,(y+j)*zoom,(z+k)*zoom,persistance, octaves, 112313) * scalar;
 				// floor y to nearest integer
 				_y = floor(_y);
 				cm->cubes[(i * height * depth) + j * depth + k] = Cube_init(gs_v3(i, _y, k));
@@ -264,7 +264,7 @@ void app_init(){
 
 		}
 	);
-	program.cube_map = CubeMap_create_big_box(100, 100, 100);
+	program.cube_map = CubeMap_create_big_box(20, 20, 20);
 	g_verts = Cube_mesh_many(*(program.cube_map));
 
 }
@@ -308,7 +308,8 @@ void app_update(){
 
 	static int counter;
 	counter++;
-	CubeMap_update_perlin_3d(program.cube_map, 100, 100,100, 5, 0.5, counter>>8,0,0,5,0.1);
+	int z = counter>>4;
+	CubeMap_update_perlin_3d(program.cube_map, 20, 20,20, 5, 0.5, 10,z,0,5,0.1);
 	program.vbo_cubemap = CubeMap_to_vbo(program.cube_map, g_verts);
 	g_verts = CubeMap_remesh(program.cube_map, g_verts);
 
