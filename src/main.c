@@ -28,22 +28,39 @@ GS_GL_VERSION_STR
 "	mat4 projection;\n"
 "	mat4 view;\n"
 "};\n"
-"float random(float seed) {\n"
-"	return fract(sin(seed + a_pos.x + a_pos.y + a_pos.z) * 43758.5453123);\n"
-"}\n"
 "void main(){ // Note that the model position is the identity matrix for a mat4\n"
-"	float index = random(float(gl_VertexID));\n"
-"	gl_Position = projection * view * mat4(1.0) *  vec4(a_pos, 1.0);\n"
-"	f_color = vec3(index,1.0 - index,index * 0.5);\n"
+"	gl_Position = (projection * (view * (mat4(1.0) * vec4(a_pos, 1.0))));\n"
+"int faceIndex = gl_VertexID / 6;"  // Determine which set of six vertices (face) the current vertex belongs to
+"switch(faceIndex % 6) {"  // There are six faces on a cube
+"case 0:"
+"f_color = vec3(1.0, 0.0, 0.0);" // Red
+"break;"
+"case 1:"
+"f_color = vec3(0.0, 1.0, 0.0);" // Green
+"break;"
+"case 2:"
+"f_color = vec3(0.0, 0.0, 1.0);" // Blue
+"break;"
+"case 3:"
+"f_color = vec3(1.0, 1.0, 0.0);" // Yellow
+"break;"
+"case 4:"
+"f_color = vec3(0.0, 1.0, 1.0);" // Cyan
+"break;"
+"case 5:"
+"f_color = vec3(1.0, 0.0, 1.0);" // Magenta
+"break;"
+"}"
 "}";
 
 char * fragment_shader = 
 	GS_GL_VERSION_STR 
 "precision mediump float;\n"
 "in vec3 f_color;\n"
-"out vec3 color;\n"
+"out vec4 color;\n"
 "void main(){\n"
-"	   color = f_color;\n"
+	// NOTE: using vec4 so that it works on both es and core
+"	   color = vec4(f_color,1.0);\n"
 "}\n";
 
 err_t Program_load_shaders(Program_t *program){
@@ -155,6 +172,20 @@ CubeMap_t *CubeMap_update_perlin_field(CubeMap_t *cm, int width,int depth,int oc
 	return cm;
 }
 
+CubeMap_t *CubeMap_update_perlin_3d(CubeMap_t *cm, int width,int height, int depth, int octaves, double persistance, int z,int y,int x, int scalar, float zoom){
+	for(int i = 0; i < width; i++){
+		for(int j = 0; j < height; j++){
+			for(int k = 0; k < depth; k++){
+				float _y = pnoise3d((x+i)*zoom,(y+j)*zoom,(z+k)*zoom,persistance, octaves, 112313) * scalar;
+				// floor y to nearest integer
+				_y = floor(_y);
+				cm->cubes[(i * height * depth) + j * depth + k] = Cube_init(gs_v3(i, _y, k));
+			}
+		}
+	}
+	return cm;
+}
+
 
 // FORWARD FUNCTION DECLARATIONS ///////////////////////////////////////////////
 void app_init();
@@ -250,7 +281,7 @@ void app_init(){
 
 		}
 	);
-	program.cube_map = CubeMap_create_perlin_field(200, 200);
+	program.cube_map = CubeMap_create_big_box(50, 20, 50);
 	g_verts = Cube_mesh_many(*(program.cube_map));
 
 }
@@ -294,7 +325,8 @@ void app_update(){
 
 	static int counter;
 	counter++;
-	CubeMap_update_perlin_field(program.cube_map, 200, 200, 5, 0.5, counter>>8,5,0.1);
+	int z = counter>>4;
+	CubeMap_update_perlin_3d(program.cube_map, 50, 20,50, 5, 0.5, 10,10,z,5,0.1);
 	program.vbo_cubemap = CubeMap_to_vbo(program.cube_map, g_verts);
 	g_verts = CubeMap_remesh(program.cube_map, g_verts);
 
@@ -401,11 +433,21 @@ void fps_camera_update(fps_camera_t* fps)
 	float dt = platform->time.delta;
 	float old_pitch = fps->pitch;
 
+	#ifdef GS_PLATFORM_WEB
+
+	// Keep track of previous amount to clamp the camera's orientation
+	fps->pitch = gs_clamp(old_pitch + dp.y, 90.f, 180.0f);
+
+	// Rotate camera
+	gs_camera_offset_orientation(&fps->cam, -dp.x, old_pitch - fps->pitch);
+	#else
+
 	// Keep track of previous amount to clamp the camera's orientation
 	fps->pitch = gs_clamp(old_pitch + dp.y, -90.f, 90.f);
 
 	// Rotate camera
 	gs_camera_offset_orientation(&fps->cam, -dp.x, old_pitch - fps->pitch);
+	#endif
 
 	gs_vec3 vel = {0};
 	if (gs_platform_key_down(GS_KEYCODE_W)) vel = gs_vec3_add(vel, gs_camera_forward(&fps->cam));
