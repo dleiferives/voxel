@@ -1,4 +1,5 @@
 @echo off
+call ms
 rmdir /Q /S bin_win
 mkdir bin_win
 pushd bin_win
